@@ -1,7 +1,7 @@
 # WIS2-GlobalBroker-Redundancy
 
-The code in this repository is to provide a reference implementation of a Global Broker as defined in the (draft) technical specification of WIS2. 
-See https://community.wmo.int/en/WIS2_Technical_Specification_Guidance
+The code in this repository is to provide a reference implementation of a Global Broker as defined in the technical specification of WIS2. 
+See [https://community.wmo.int/en/WIS2_Technical_Specification_Guidance](https://wmo-im.github.io/wis2-guide/guide/wis2-guide-APPROVED.html)
 
 This is the second version of a reference implementation of the AntiLoop feature that is part of a Global Broker.
 It has been built reusing the vast majority of the first version of the tool available here: https://github.com/golfvert/WIS2-GlobalBroker-NodeRed
