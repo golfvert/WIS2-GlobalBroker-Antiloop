@@ -1235,7 +1235,7 @@
         "z": "3af82246.3634ae",
         "g": "0e2c3f294eb753b6",
         "name": "Validate ?",
-        "property": "(\t   (\t       ( $env(\"MSG_CHECK_OPTION\") in [\"discard\",\"verify\"] ) \t       and $not ($contains(topic,\"metadata\") )\t       and $not ($contains(topic,\"monitor\") )\t   ) ? true : false\t)\t",
+        "property": "(\t   (\t       ( $env(\"MSG_CHECK_OPTION\") in [\"discard\",\"verify\"] ) \t       and $not ($contains(topic,\"monitor\") )\t   ) ? true : false\t)\t",
         "propertyType": "jsonata",
         "rules": [
             {
@@ -2977,8 +2977,7 @@
             "714d2454d4276f86",
             "dbc51c795c74b90f",
             "f5aaa060b0d16106",
-            "efad9ff6bfbdae5b",
-            "d2b56dcdeec0d23c"
+            "efad9ff6bfbdae5b"
         ],
         "x": 265,
         "y": 2580,
@@ -7422,5 +7421,325 @@
                 "df49419d7601b87d"
             ]
         ]
+    },
+    {
+        "id": "a46ee04e.b1a9b8",
+        "type": "inject",
+        "z": "3af82246.3634ae",
+        "name": "open",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "control",
+        "payload": "OPEN",
+        "payloadType": "str",
+        "x": 590,
+        "y": 4420,
+        "wires": [
+            [
+                "c54e919c.18d7f"
+            ]
+        ]
+    },
+    {
+        "id": "c54e919c.18d7f",
+        "type": "q-gate",
+        "z": "3af82246.3634ae",
+        "name": "q-gate demo",
+        "controlTopic": "control",
+        "defaultState": "open",
+        "openCmd": "open",
+        "closeCmd": "close",
+        "toggleCmd": "toggle",
+        "queueCmd": "queue",
+        "defaultCmd": "default",
+        "triggerCmd": "trigger",
+        "flushCmd": "flush",
+        "resetCmd": "reset",
+        "peekCmd": "peek",
+        "dropCmd": "drop",
+        "statusCmd": "status",
+        "maxQueueLength": "0",
+        "keepNewest": false,
+        "qToggle": false,
+        "persist": false,
+        "x": 830,
+        "y": 4640,
+        "wires": [
+            [
+                "d2740316.7035c"
+            ]
+        ]
+    },
+    {
+        "id": "c04db5ad.da76b8",
+        "type": "inject",
+        "z": "3af82246.3634ae",
+        "name": "input",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 550,
+        "y": 4640,
+        "wires": [
+            [
+                "c54e919c.18d7f"
+            ]
+        ]
+    },
+    {
+        "id": "287fae2e.cb245a",
+        "type": "inject",
+        "z": "3af82246.3634ae",
+        "name": "toggle",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "control",
+        "payload": "toggle",
+        "payloadType": "str",
+        "x": 590,
+        "y": 4500,
+        "wires": [
+            [
+                "c54e919c.18d7f"
+            ]
+        ]
+    },
+    {
+        "id": "8fd8943b.e60c28",
+        "type": "inject",
+        "z": "3af82246.3634ae",
+        "name": "close",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "control",
+        "payload": "close",
+        "payloadType": "str",
+        "x": 590,
+        "y": 4460,
+        "wires": [
+            [
+                "c54e919c.18d7f"
+            ]
+        ]
+    },
+    {
+        "id": "44541499.4ac23c",
+        "type": "inject",
+        "z": "3af82246.3634ae",
+        "name": "default",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "control",
+        "payload": "default",
+        "payloadType": "str",
+        "x": 590,
+        "y": 4540,
+        "wires": [
+            [
+                "c54e919c.18d7f"
+            ]
+        ]
+    },
+    {
+        "id": "92b01a9d.669a58",
+        "type": "inject",
+        "z": "3af82246.3634ae",
+        "name": "queue",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "control",
+        "payload": "queue",
+        "payloadType": "str",
+        "x": 590,
+        "y": 4700,
+        "wires": [
+            [
+                "c54e919c.18d7f"
+            ]
+        ]
+    },
+    {
+        "id": "5f8708d.abc59f8",
+        "type": "inject",
+        "z": "3af82246.3634ae",
+        "name": "flush",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "control",
+        "payload": "flush",
+        "payloadType": "str",
+        "x": 590,
+        "y": 4780,
+        "wires": [
+            [
+                "c54e919c.18d7f"
+            ]
+        ]
+    },
+    {
+        "id": "fb8c7d0f.40eec",
+        "type": "inject",
+        "z": "3af82246.3634ae",
+        "name": "trigger",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "control",
+        "payload": "trigger",
+        "payloadType": "str",
+        "x": 590,
+        "y": 4740,
+        "wires": [
+            [
+                "c54e919c.18d7f"
+            ]
+        ]
+    },
+    {
+        "id": "b7688480.6338",
+        "type": "inject",
+        "z": "3af82246.3634ae",
+        "name": "reset",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "control",
+        "payload": "reset",
+        "payloadType": "str",
+        "x": 590,
+        "y": 4820,
+        "wires": [
+            [
+                "c54e919c.18d7f"
+            ]
+        ]
+    },
+    {
+        "id": "44127021.988758",
+        "type": "inject",
+        "z": "3af82246.3634ae",
+        "name": "peek",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "control",
+        "payload": "peek",
+        "payloadType": "str",
+        "x": 590,
+        "y": 4860,
+        "wires": [
+            [
+                "c54e919c.18d7f"
+            ]
+        ]
+    },
+    {
+        "id": "cc39c2df.44d0b8",
+        "type": "inject",
+        "z": "3af82246.3634ae",
+        "name": "drop",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "control",
+        "payload": "drop",
+        "payloadType": "str",
+        "x": 590,
+        "y": 4900,
+        "wires": [
+            [
+                "c54e919c.18d7f"
+            ]
+        ]
+    },
+    {
+        "id": "a94f3db7.55ae18",
+        "type": "inject",
+        "z": "3af82246.3634ae",
+        "name": "status",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "control",
+        "payload": "status",
+        "payloadType": "str",
+        "x": 590,
+        "y": 4580,
+        "wires": [
+            [
+                "c54e919c.18d7f"
+            ]
+        ]
+    },
+    {
+        "id": "d2740316.7035c",
+        "type": "debug",
+        "z": "3af82246.3634ae",
+        "name": "output",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 990,
+        "y": 4640,
+        "wires": []
+    },
+    {
+        "id": "ae120d0f.ade318",
+        "type": "status",
+        "z": "3af82246.3634ae",
+        "name": "q-gate status",
+        "scope": [
+            "c54e919c.18d7f"
+        ],
+        "x": 830,
+        "y": 4700,
+        "wires": [
+            [
+                "ea4d90f9.61a5b"
+            ]
+        ]
+    },
+    {
+        "id": "ea4d90f9.61a5b",
+        "type": "debug",
+        "z": "3af82246.3634ae",
+        "name": "status text",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "$number($substringAfter(status.text,\"queuing: \" ))",
+        "targetType": "jsonata",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 990,
+        "y": 4700,
+        "wires": []
     }
 ]

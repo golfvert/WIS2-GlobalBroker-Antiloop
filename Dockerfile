@@ -10,7 +10,7 @@ RUN apk add --no-cache \
     chmod 0777 /usr/src/node-red /data && \
     chown -R node-red:node-red /data 
 
-FROM nodered/node-red:4.0.9-minimal AS build
+FROM nodered/node-red:4.1.0-minimal AS build
 
 COPY package.json .
 
