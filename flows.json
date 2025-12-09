@@ -3341,8 +3341,9 @@
         "spltType": "str",
         "arraySplt": 1,
         "arraySpltType": "len",
-        "stream": true,
+        "stream": false,
         "addname": "",
+        "property": "payload",
         "x": 950,
         "y": 1900,
         "wires": [
