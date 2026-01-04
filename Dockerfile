@@ -1,4 +1,4 @@
-FROM alpine:3.22.0 AS base
+FROM alpine:3.23.2 AS base
 
 
 RUN apk add --no-cache \
@@ -10,7 +10,7 @@ RUN apk add --no-cache \
     chmod 0777 /usr/src/node-red /data && \
     chown -R node-red:node-red /data 
 
-FROM nodered/node-red:4.0.9-minimal AS build
+FROM nodered/node-red:4.1.2-minimal AS build
 
 COPY package.json .
 
