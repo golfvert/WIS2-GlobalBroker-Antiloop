@@ -1096,7 +1096,6 @@
         "id": "0ba924a28af55b20",
         "type": "mqtt in",
         "z": "3af82246.3634ae",
-        "d": true,
         "g": "0e2c3f294eb753b6",
         "name": "Subscriber",
         "topic": "",
