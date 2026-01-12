@@ -1096,6 +1096,7 @@
         "id": "0ba924a28af55b20",
         "type": "mqtt in",
         "z": "3af82246.3634ae",
+        "d": true,
         "g": "0e2c3f294eb753b6",
         "name": "Subscriber",
         "topic": "",
@@ -2665,7 +2666,7 @@
                 "t": "set",
                 "p": "broker.keepalive",
                 "pt": "msg",
-                "to": "$length($env(\"MQTT_KEEPALIVE\")) = 0 ? 60 : $number($env(\"MQTT_KEEPALIVE\"))",
+                "to": "$length($env(\"MQTT_SUB_KEEPALIVE\")) = 0 ? 60 : $number($env(\"MQTT_SUB_KEEPALIVE\"))",
                 "tot": "jsonata"
             },
             {
@@ -3253,7 +3254,8 @@
         "wires": [
             [
                 "e4071c69374aa3a4",
-                "f2a77929465ade4f"
+                "f2a77929465ade4f",
+                "df49419d7601b87d"
             ]
         ]
     },
