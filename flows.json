@@ -4435,7 +4435,7 @@
                 "t": "set",
                 "p": "payload",
                 "pt": "msg",
-                "to": "{\t  \"specversion\": \"1.0\",\t  \"type\": \"int.wmo.wis.wme.event\",\t  \"source\": $flowContext(\"gbid\"),\t  \"subject\": $flowContext(\"centreid\"),\t  \"id\": uuid,\t  \"time\": $fromMillis($millis(),'[Y0001]-[M01]-[D01]T[H01]:[m01]:[s01].[f003]Z'),\t  \"datacontenttype\": \"application/json\",\t  \"dataschema\": \"https://schemas.wmo.int/wme/1.0.0/schemas/wis2-event-message-encoding-bundled.json\",  \t  \"data\": {\t      \"conformsTo\": [\t            \"http://wis.wmo.int/spec/wme/1/conf/monitoring-event-message-encoding-core\"\t      ],  \t      \"content\": {\t        \"channel\": mqtttopic,\t        \"wnm\": mqttpayload,\t        \"title\": title,\t        \"errors\": error\t      },\t      \"severity\": \"ERROR\"\t  }\t}\t",
+                "to": "{\t  \"specversion\": \"1.0\",\t  \"type\": \"int.wmo.wis.wme.event\",\t  \"source\": $flowContext(\"gbid\"),\t  \"subject\": $flowContext(\"centreid\"),\t  \"id\": uuid,\t  \"time\": $fromMillis($millis(),'[Y0001]-[M01]-[D01]T[H01]:[m01]:[s01].[f003]Z'),\t  \"datacontenttype\": \"application/json\",\t  \"dataschema\": \"https://schemas.wmo.int/wme/1.0.0/schemas/wis2-event-message-encoding-bundled.json\",  \t  \"data\": {\t      \"conformsTo\": [\t            \"http://wis.wmo.int/spec/wme/1/conf/monitoring-event-message-encoding-core\"\t      ],\t      \"channel\": mqtttopic,  \t      \"content\": {\t        \"wnm\": mqttpayload,\t        \"title\": title,\t        \"errors\": error\t      },\t      \"severity\": \"ERROR\"\t  }\t}\t",
                 "tot": "jsonata"
             },
             {
@@ -7741,82 +7741,6 @@
         ],
         "x": 795,
         "y": 2640,
-        "wires": []
-    },
-    {
-        "id": "060a19961cf38523",
-        "type": "inject",
-        "z": "3af82246.3634ae",
-        "name": "",
-        "props": [
-            {
-                "p": "topic",
-                "vt": "str"
-            },
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "origin/a/wis2/something/#",
-        "payload": "go",
-        "payloadType": "str",
-        "x": 1300,
-        "y": 840,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "ea40affbf3d3ebaf",
-        "type": "debug",
-        "z": "3af82246.3634ae",
-        "name": "debug 1",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "$flowContext(\"centreid\")",
-        "targetType": "jsonata",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1800,
-        "y": 720,
-        "wires": []
-    },
-    {
-        "id": "bbc84039774f518a",
-        "type": "debug",
-        "z": "3af82246.3634ae",
-        "name": "debug 2",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1750,
-        "y": 860,
-        "wires": []
-    },
-    {
-        "id": "e647afbddbd30bb3",
-        "type": "debug",
-        "z": "3af82246.3634ae",
-        "name": "debug 3",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1810,
-        "y": 800,
         "wires": []
     },
     {
