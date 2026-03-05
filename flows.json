@@ -349,7 +349,6 @@
         },
         "nodes": [
             "20ec172fe67348c6",
-            "5a32454d94055eac",
             "0ba924a28af55b20",
             "d1007e39ed03dbdd",
             "5af91b47829c129d",
@@ -448,7 +447,6 @@
             "2f1480cfe91a468a",
             "9823cd1371a656bd",
             "3bb3eb8fad8e5ead",
-            "8cdef1bef5766097",
             "1b8b7fb7e63be747",
             "9bf2d21dab89cb20",
             "3fefb9058f685721",
@@ -459,7 +457,12 @@
             "d4304c99caba02e4",
             "ded9f0dcef59eaae",
             "5b58d6e5fef36f1e",
-            "f4b374e6fdb7e903"
+            "f4b374e6fdb7e903",
+            "ddc5c4a141aef710",
+            "5a32454d94055eac",
+            "8cdef1bef5766097",
+            "f570165ff04d3e14",
+            "341c27e67d81a250"
         ],
         "x": 174,
         "y": 1859,
@@ -1076,25 +1079,6 @@
         "wires": []
     },
     {
-        "id": "5a32454d94055eac",
-        "type": "mqtt out",
-        "z": "3af82246.3634ae",
-        "g": "0e2c3f294eb753b6",
-        "name": "Publisher",
-        "topic": "",
-        "qos": "1",
-        "retain": "false",
-        "respTopic": "",
-        "contentType": "",
-        "userProps": "",
-        "correl": "",
-        "expiry": "",
-        "broker": "ac0560c0180e4641",
-        "x": 900,
-        "y": 2920,
-        "wires": []
-    },
-    {
         "id": "0ba924a28af55b20",
         "type": "mqtt in",
         "z": "3af82246.3634ae",
@@ -1147,8 +1131,7 @@
         "y": 2920,
         "wires": [
             [
-                "5a32454d94055eac",
-                "8cdef1bef5766097"
+                "ddc5c4a141aef710"
             ]
         ]
     },
@@ -7155,7 +7138,8 @@
         "name": "link in 23",
         "links": [
             "9823cd1371a656bd",
-            "8cdef1bef5766097"
+            "8cdef1bef5766097",
+            "341c27e67d81a250"
         ],
         "x": 685,
         "y": 3080,
@@ -7167,20 +7151,6 @@
                 "16cfbad1f297bfc9"
             ]
         ]
-    },
-    {
-        "id": "8cdef1bef5766097",
-        "type": "link out",
-        "z": "3af82246.3634ae",
-        "g": "0e2c3f294eb753b6",
-        "name": "link out 35",
-        "mode": "link",
-        "links": [
-            "3bb3eb8fad8e5ead"
-        ],
-        "x": 855,
-        "y": 2980,
-        "wires": []
     },
     {
         "id": "1b8b7fb7e63be747",
@@ -7774,5 +7744,110 @@
                 "9bf2d21dab89cb20"
             ]
         ]
+    },
+    {
+        "id": "ddc5c4a141aef710",
+        "type": "switch",
+        "z": "3af82246.3634ae",
+        "g": "0e2c3f294eb753b6",
+        "name": "Delete content ?",
+        "property": "$env(\"DELETE_CONTENT_OPTION\") = \"discard\"",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "false"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 920,
+        "y": 2920,
+        "wires": [
+            [
+                "f570165ff04d3e14"
+            ],
+            [
+                "5a32454d94055eac",
+                "8cdef1bef5766097"
+            ]
+        ]
+    },
+    {
+        "id": "5a32454d94055eac",
+        "type": "mqtt out",
+        "z": "3af82246.3634ae",
+        "g": "0e2c3f294eb753b6",
+        "name": "Publisher",
+        "topic": "",
+        "qos": "1",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "ac0560c0180e4641",
+        "x": 1220,
+        "y": 2920,
+        "wires": []
+    },
+    {
+        "id": "8cdef1bef5766097",
+        "type": "link out",
+        "z": "3af82246.3634ae",
+        "g": "0e2c3f294eb753b6",
+        "name": "link out 35",
+        "mode": "link",
+        "links": [
+            "3bb3eb8fad8e5ead"
+        ],
+        "x": 1085,
+        "y": 2960,
+        "wires": []
+    },
+    {
+        "id": "f570165ff04d3e14",
+        "type": "change",
+        "z": "3af82246.3634ae",
+        "g": "0e2c3f294eb753b6",
+        "name": "Delete",
+        "rules": [
+            {
+                "t": "delete",
+                "p": "payload.properties.content",
+                "pt": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1070,
+        "y": 2900,
+        "wires": [
+            [
+                "5a32454d94055eac",
+                "341c27e67d81a250"
+            ]
+        ]
+    },
+    {
+        "id": "341c27e67d81a250",
+        "type": "link out",
+        "z": "3af82246.3634ae",
+        "g": "0e2c3f294eb753b6",
+        "name": "link out 17",
+        "mode": "link",
+        "links": [
+            "3bb3eb8fad8e5ead"
+        ],
+        "x": 1175,
+        "y": 2880,
+        "wires": []
     }
 ]
