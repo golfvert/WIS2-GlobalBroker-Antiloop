@@ -1,0 +1,11 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    paths:
+      - 'image:tag'
+
+jobs:
+  build-and-push:
+    uses: golfvert/WIS2-GlobalCache/.github/workflows/docker-build.yml@main
+    secrets: inherit
