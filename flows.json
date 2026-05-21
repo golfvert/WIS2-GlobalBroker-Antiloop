@@ -1,5 +1,13 @@
 [
     {
+        "id": "5736d96223542b98",
+        "type": "tab",
+        "label": "CI / CD",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
         "id": "3af82246.3634ae",
         "type": "tab",
         "label": "Pub/Sub",
@@ -392,7 +400,6 @@
             "352b870c0bdaf6d0",
             "d11e2b1d34dad0bf",
             "a2b990cc2ac4b822",
-            "8dafdd8865d5f168",
             "1ab497b74638e16e",
             "72c0f0ca72d21c67",
             "02167eb395a3423a",
@@ -460,7 +467,8 @@
             "5a32454d94055eac",
             "8cdef1bef5766097",
             "f570165ff04d3e14",
-            "341c27e67d81a250"
+            "341c27e67d81a250",
+            "17a3c62135bcb4ba"
         ],
         "x": 174,
         "y": 1939,
@@ -775,6 +783,62 @@
         "help": "Connection status from broker to centre backup",
         "labels": "centre_id",
         "mtype": "gauge"
+    },
+    {
+        "id": "15d0ec9bc2ce2c9c",
+        "type": "inject",
+        "z": "5736d96223542b98",
+        "name": "Update image:tag",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 190,
+        "y": 80,
+        "wires": [
+            [
+                "d92bb90dbc47cc63"
+            ]
+        ]
+    },
+    {
+        "id": "d92bb90dbc47cc63",
+        "type": "function",
+        "z": "5736d96223542b98",
+        "name": "Tag",
+        "func": "// ── Configuration ─────────────────────────────────────────────\nconst IMAGE_NAME = env.get(\"NODE_RED_CONTAINER_NAME\");\nconst TAG_DIR = env.get(\"NODE_RED_CONTAINER_DIRECTORY\");\nconst TAG_FILE = `${TAG_DIR}/image:tag`;\n\nif (!IMAGE_NAME || !TAG_DIR) {\n    node.error(\"Missing required environment variables: NODE_RED_CONTAINER_NAME and/or NODE_RED_CONTAINER_DIRECTORY\");\n    return null;\n}\n// ──────────────────────────────────────────────────────────────\n\nconst now = new Date();\nconst curY = now.getFullYear();\nconst curM = now.getMonth() + 1;  // 1-12\n\nlet newTag;\n\nif (!fs.existsSync(TAG_FILE)) {\n    // File does not exist: create with YYYY.MM.1\n    newTag = `${curY}.${curM}.1`;\n\n} else {\n    const content = fs.readFileSync(TAG_FILE, 'utf8').trim();\n    // Expected format: imagename:YYYY.MM.patch\n    const match = content.match(/:(\\d+)\\.(\\d+)\\.(\\d+)$/);\n\n    if (!match) {\n        // Unreadable format: reset\n        newTag = `${curY}.${curM}.1`;\n\n    } else {\n        let [, fileY, fileM, fileP] = match.map(Number);\n\n        if (fileY === curY && fileM === curM) {\n            // Same year and month: bump patch\n            newTag = `${curY}.${curM}.${fileP + 1}`;\n\n        } else {\n            // Different month or year: compute next month\n            let nextY = fileY;\n            let nextM = fileM + 1;\n            if (nextM > 12) {\n                nextY += 1;\n                nextM = 1;\n            }\n            newTag = `${nextY}.${nextM}.1`;\n        }\n    }\n}\n\nconst fileContent = `${IMAGE_NAME}:${newTag}`;\nfs.writeFileSync(TAG_FILE, fileContent, 'utf8');\n\nmsg.payload = fileContent;\nnode.status({ fill: \"green\", shape: \"dot\", text: fileContent });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [
+            {
+                "var": "fs",
+                "module": "fs"
+            },
+            {
+                "var": "path",
+                "module": "path"
+            }
+        ],
+        "x": 350,
+        "y": 80,
+        "wires": [
+            []
+        ]
     },
     {
         "id": "b1115d7b4bce6f22",
@@ -3671,41 +3735,6 @@
         ]
     },
     {
-        "id": "8dafdd8865d5f168",
-        "type": "change",
-        "z": "3af82246.3634ae",
-        "g": "0e2c3f294eb753b6",
-        "name": "Init",
-        "rules": [
-            {
-                "t": "set",
-                "p": "topic",
-                "pt": "msg",
-                "to": "$split($env(\"MQTT_SUB_TOPIC\"),\",\")",
-                "tot": "jsonata"
-            },
-            {
-                "t": "set",
-                "p": "action",
-                "pt": "msg",
-                "to": "subscribe",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 510,
-        "y": 2100,
-        "wires": [
-            [
-                "0ba924a28af55b20"
-            ]
-        ]
-    },
-    {
         "id": "1ab497b74638e16e",
         "type": "change",
         "z": "3af82246.3634ae",
@@ -4618,7 +4647,7 @@
         "y": 2100,
         "wires": [
             [
-                "8dafdd8865d5f168"
+                "17a3c62135bcb4ba"
             ]
         ]
     },
@@ -5071,9 +5100,16 @@
         "rules": [
             {
                 "t": "set",
+                "p": "qos",
+                "pt": "msg",
+                "to": "$env(\"MQTT_SUB_QOS\") = \"\" ? 0 : $number($env(\"MQTT_SUB_QOS\"))",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
                 "p": "topic",
                 "pt": "msg",
-                "to": "$split($env(\"MQTT_SUB_TOPIC\"),\",\")",
+                "to": "$map($split($env(\"MQTT_SUB_TOPIC\"), \",\"), function($t) {     {\"topic\": $trim($t), \"qos\": qos} })",
                 "tot": "jsonata"
             },
             {
@@ -7669,10 +7705,10 @@
                 "t": "true"
             },
             {
-                "t": "false"
+                "t": "else"
             }
         ],
-        "checkall": "true",
+        "checkall": "false",
         "repair": false,
         "outputs": 2,
         "x": 920,
@@ -7825,6 +7861,48 @@
         "wires": [
             [
                 "cb051f965faa6650"
+            ]
+        ]
+    },
+    {
+        "id": "17a3c62135bcb4ba",
+        "type": "change",
+        "z": "3af82246.3634ae",
+        "g": "0e2c3f294eb753b6",
+        "name": "Init",
+        "rules": [
+            {
+                "t": "set",
+                "p": "qos",
+                "pt": "msg",
+                "to": "$env(\"MQTT_SUB_QOS\") = \"\" ? 0 : $number($env(\"MQTT_SUB_QOS\"))",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "$map($split($env(\"MQTT_SUB_TOPIC\"), \",\"), function($t) {     {\"topic\": $trim($t), \"qos\": qos} })",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "action",
+                "pt": "msg",
+                "to": "subscribe",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 510,
+        "y": 2100,
+        "wires": [
+            [
+                "0ba924a28af55b20"
             ]
         ]
     }
