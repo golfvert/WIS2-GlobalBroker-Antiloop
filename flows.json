@@ -4096,6 +4096,13 @@
                 "pt": "msg",
                 "to": "$length($env(\"TOPIC_URL\")) = 0 ? \"https://raw.githubusercontent.com/golfvert/wis2-topic-hierarchy/main/earth-system-discipline-and-below.md5.txt\" : $env(\"TOPIC_URL\")",
                 "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "requestTimeout",
+                "pt": "msg",
+                "to": "30000",
+                "tot": "num"
             }
         ],
         "action": "",
@@ -5726,6 +5733,13 @@
                 "pt": "msg",
                 "to": "$length($env(\"GDC_URL\")) = 0 ? \"https://wmo-im.github.io/wis2-guide/gdc-all-channels-latest.txt\" : $env(\"GDC_URL\")",
                 "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "requestTimeout",
+                "pt": "msg",
+                "to": "30000",
+                "tot": "num"
             }
         ],
         "action": "",
