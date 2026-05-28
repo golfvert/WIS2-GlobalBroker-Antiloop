@@ -186,7 +186,6 @@
             "051f1aadd5a065d6",
             "b7063bd33192a3f5",
             "dd045490fff21a17",
-            "93a9fa867e314aa1",
             "2d49c2d7293068cb",
             "a2d55fdc5f93394d",
             "17ec0cec1cf800f0",
@@ -221,7 +220,8 @@
             "6bc1cafe3c62eedd",
             "e16278c4105cfffa",
             "bf2887ccd58f7f76",
-            "3cda36254c15a40a"
+            "3cda36254c15a40a",
+            "2cf408b056052ecc"
         ],
         "x": 174,
         "y": 119,
@@ -1144,6 +1144,7 @@
         "id": "0ba924a28af55b20",
         "type": "mqtt in",
         "z": "3af82246.3634ae",
+        "d": true,
         "g": "0e2c3f294eb753b6",
         "name": "Subscriber",
         "topic": "",
@@ -2737,90 +2738,6 @@
         ]
     },
     {
-        "id": "93a9fa867e314aa1",
-        "type": "change",
-        "z": "3af82246.3634ae",
-        "g": "ce2cac978984a426",
-        "name": "Handle connection",
-        "rules": [
-            {
-                "t": "set",
-                "p": "action",
-                "pt": "msg",
-                "to": "connect",
-                "tot": "str"
-            },
-            {
-                "t": "set",
-                "p": "broker",
-                "pt": "msg",
-                "to": "{}",
-                "tot": "json"
-            },
-            {
-                "t": "set",
-                "p": "broker.force",
-                "pt": "msg",
-                "to": "true",
-                "tot": "bool"
-            },
-            {
-                "t": "set",
-                "p": "broker.broker",
-                "pt": "msg",
-                "to": "MQTT_PUB_BROKER",
-                "tot": "env"
-            },
-            {
-                "t": "set",
-                "p": "broker.usetls",
-                "pt": "msg",
-                "to": "$contains($env(\"MQTT_PUB_BROKER\"),/wss/) or $contains($env(\"MQTT_PUB_BROKER\"),/mqtts/)",
-                "tot": "jsonata"
-            },
-            {
-                "t": "set",
-                "p": "broker.username",
-                "pt": "msg",
-                "to": "MQTT_PUB_USERNAME",
-                "tot": "env"
-            },
-            {
-                "t": "set",
-                "p": "broker.password",
-                "pt": "msg",
-                "to": "MQTT_PUB_PASSWORD",
-                "tot": "env"
-            },
-            {
-                "t": "set",
-                "p": "broker.protocolVersion",
-                "pt": "msg",
-                "to": "$length($env(\"MQTT_PUB_BROKERVERSION\")) = 0 ? 4 : $number($env(\"MQTT_PUB_BROKERVERSION\"))",
-                "tot": "jsonata"
-            },
-            {
-                "t": "set",
-                "p": "broker.clientid",
-                "pt": "msg",
-                "to": "$env(\"CENTRE_ID\") & \"_\" & $split(payload,\"-\")[4]",
-                "tot": "jsonata"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 610,
-        "y": 400,
-        "wires": [
-            [
-                "affbfac114622266"
-            ]
-        ]
-    },
-    {
         "id": "b1c3baa492255df2",
         "type": "switch",
         "z": "3af82246.3634ae",
@@ -4298,13 +4215,13 @@
                 "84aa094dcec4b4eb",
                 "a2d55fdc5f93394d",
                 "dd045490fff21a17",
-                "93a9fa867e314aa1",
                 "7e94bbf4b7e030a2",
                 "5fcd6ca3d9f16c53",
                 "04030da87c97a7e6",
                 "d951ba2efcf687a6",
                 "11ac8309f0b927d3",
-                "e16278c4105cfffa"
+                "e16278c4105cfffa",
+                "2cf408b056052ecc"
             ]
         ],
         "info": "Create a random UUID to track various aspects of the container."
@@ -7917,6 +7834,97 @@
         "wires": [
             [
                 "0ba924a28af55b20"
+            ]
+        ]
+    },
+    {
+        "id": "2cf408b056052ecc",
+        "type": "change",
+        "z": "3af82246.3634ae",
+        "g": "ce2cac978984a426",
+        "name": "Handle connection",
+        "rules": [
+            {
+                "t": "set",
+                "p": "action",
+                "pt": "msg",
+                "to": "connect",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "broker",
+                "pt": "msg",
+                "to": "{}",
+                "tot": "json"
+            },
+            {
+                "t": "set",
+                "p": "broker.force",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            },
+            {
+                "t": "set",
+                "p": "broker.broker",
+                "pt": "msg",
+                "to": "MQTT_PUB_BROKER",
+                "tot": "env"
+            },
+            {
+                "t": "set",
+                "p": "broker.usetls",
+                "pt": "msg",
+                "to": "$contains($env(\"MQTT_PUB_BROKER\"),/wss/) or $contains($env(\"MQTT_PUB_BROKER\"),/mqtts/)",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "broker.username",
+                "pt": "msg",
+                "to": "MQTT_PUB_USERNAME",
+                "tot": "env"
+            },
+            {
+                "t": "set",
+                "p": "broker.password",
+                "pt": "msg",
+                "to": "MQTT_PUB_PASSWORD",
+                "tot": "env"
+            },
+            {
+                "t": "set",
+                "p": "broker.keepalive",
+                "pt": "msg",
+                "to": "$length($env(\"MQTT_PUB_KEEPALIVE\")) = 0 ? 60 : $number($env(\"MQTT_PUB_KEEPALIVE\"))",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "broker.protocolVersion",
+                "pt": "msg",
+                "to": "$length($env(\"MQTT_PUB_BROKERVERSION\")) = 0 ? 4 : $number($env(\"MQTT_PUB_BROKERVERSION\"))",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "broker.clientid",
+                "pt": "msg",
+                "to": "$env(\"CENTRE_ID\") & \"_\" & $split(payload,\"-\")[4]",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 610,
+        "y": 400,
+        "wires": [
+            [
+                "affbfac114622266"
             ]
         ]
     }
