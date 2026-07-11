@@ -29,7 +29,7 @@ The repo has been cloned from the official NodeRed repository.
 3. Every 10s each container verifies if its unique identifier is the lowest of all containers for this key. If yes, it stays *primary* or becomes the *primary* and messages stored in the holding queue are released. On *secondary* the holding queue is flushed.
 4. Optionally verify/discard/ignore the message for its validity compared to approved message format
 5. Look at the `id` in the message. 
-6. Through a redis request check if that `id` has already been seen in the last 15 minutes. If yes, simply discard the message
+6. Through a redis request check if that `id` has already been seen in the last 2 hours. If yes, simply discard the message
 7. If not, publish the message to the attached Global Broker
 8. It also provides prometheus metrics available at http://@IP:1880/metrics
 
