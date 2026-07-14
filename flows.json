@@ -2678,7 +2678,7 @@
                 "p": "vector",
                 "pt": "flow",
                 "to": "$length($env(\"VECTOR_URL\")) = 0 ? false : $env(\"VECTOR_URL\")",
-                "tot": "str"
+                "tot": "jsonata"
             }
         ],
         "action": "",
@@ -8468,8 +8468,8 @@
         "z": "3af82246.3634ae",
         "g": "0e2c3f294eb753b6",
         "name": "Debug ?",
-        "property": "debug",
-        "propertyType": "flow",
+        "property": "$flowContext(\"debug\") = true and $flowContext(\"vector\") != false",
+        "propertyType": "jsonata",
         "rules": [
             {
                 "t": "true"
