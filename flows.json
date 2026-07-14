@@ -130,7 +130,7 @@
             "a9c4d402f2216f61"
         ],
         "x": 174,
-        "y": 3379,
+        "y": 3419,
         "w": 932,
         "h": 602
     },
@@ -158,7 +158,7 @@
             "3484111e0c147f1d"
         ],
         "x": 174,
-        "y": 3999,
+        "y": 4039,
         "w": 452,
         "h": 222
     },
@@ -465,12 +465,14 @@
             "341c27e67d81a250",
             "17a3c62135bcb4ba",
             "bda02f3204c67b1b",
-            "f90c3c2a4495decc"
+            "f90c3c2a4495decc",
+            "316a3e3d281f53aa",
+            "771beeafff6064a0"
         ],
         "x": 174,
         "y": 2039,
         "w": 1462,
-        "h": 1322
+        "h": 1362
     },
     {
         "id": "f49a346025a2dc9a",
@@ -493,6 +495,33 @@
         "x": 954,
         "y": 1519,
         "w": 312,
+        "h": 182
+    },
+    {
+        "id": "09f41022a9a7b179",
+        "type": "group",
+        "z": "3af82246.3634ae",
+        "style": {
+            "stroke": "#999999",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "fill-opacity": "1",
+            "label": true,
+            "label-position": "nw",
+            "color": "#767676"
+        },
+        "nodes": [
+            "1e400f50993f5697",
+            "8044d101f391a928",
+            "11c04149656ba188",
+            "f75be9b6709a3ff3",
+            "9a72ee0e20a2559c",
+            "32c7010c9f5ae7e8",
+            "2294c641abe2befc"
+        ],
+        "x": 1274,
+        "y": 1519,
+        "w": 412,
         "h": 182
     },
     {
@@ -1697,7 +1726,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 270,
-        "y": 3500,
+        "y": 3540,
         "wires": [
             [
                 "0b7db5e2a563f7ee"
@@ -1725,7 +1754,7 @@
         "to": "",
         "reg": false,
         "x": 510,
-        "y": 3500,
+        "y": 3540,
         "wires": [
             [
                 "91375cbee22eac8b"
@@ -1746,7 +1775,7 @@
         "payloadType": "json",
         "block": false,
         "x": 630,
-        "y": 3500,
+        "y": 3540,
         "wires": [
             []
         ]
@@ -1770,7 +1799,7 @@
         "onceDelay": "5",
         "topic": "",
         "x": 270,
-        "y": 3600,
+        "y": 3640,
         "wires": [
             [
                 "fb872857136145a0"
@@ -1791,7 +1820,7 @@
         "finalize": "",
         "libs": [],
         "x": 650,
-        "y": 3560,
+        "y": 3600,
         "wires": [
             [
                 "1437e30492222fdc"
@@ -1822,7 +1851,7 @@
         "repair": false,
         "outputs": 2,
         "x": 320,
-        "y": 3840,
+        "y": 3880,
         "wires": [
             [
                 "0c40af1e53657c10",
@@ -1851,7 +1880,7 @@
         "repair": false,
         "outputs": 1,
         "x": 580,
-        "y": 3720,
+        "y": 3760,
         "wires": [
             [
                 "7396f17b4d5a8acc"
@@ -1879,7 +1908,7 @@
         "to": "",
         "reg": false,
         "x": 710,
-        "y": 3720,
+        "y": 3760,
         "wires": [
             [
                 "43e8195bba447330"
@@ -1900,7 +1929,7 @@
         "payloadType": "json",
         "block": false,
         "x": 530,
-        "y": 3560,
+        "y": 3600,
         "wires": [
             [
                 "cb516c136f502154"
@@ -1921,7 +1950,7 @@
         "payloadType": "json",
         "block": false,
         "x": 830,
-        "y": 3720,
+        "y": 3760,
         "wires": [
             []
         ]
@@ -1954,7 +1983,7 @@
         "to": "",
         "reg": false,
         "x": 450,
-        "y": 3800,
+        "y": 3840,
         "wires": [
             [
                 "bf84f00af773ae55"
@@ -1989,7 +2018,7 @@
         "to": "",
         "reg": false,
         "x": 630,
-        "y": 3880,
+        "y": 3920,
         "wires": [
             [
                 "fecc8e288bcc1234",
@@ -2025,7 +2054,7 @@
         "to": "",
         "reg": false,
         "x": 450,
-        "y": 3860,
+        "y": 3900,
         "wires": [
             [
                 "088242062a8edf86",
@@ -2061,7 +2090,7 @@
         "to": "",
         "reg": false,
         "x": 770,
-        "y": 3900,
+        "y": 3940,
         "wires": [
             [
                 "7cbd67306119b602",
@@ -2097,7 +2126,7 @@
         "to": "",
         "reg": false,
         "x": 970,
-        "y": 3900,
+        "y": 3940,
         "wires": [
             [
                 "b6f1b5afd8f26926"
@@ -2119,7 +2148,7 @@
             "695c774f6a4a856c"
         ],
         "x": 535,
-        "y": 3800,
+        "y": 3840,
         "wires": []
     },
     {
@@ -2135,7 +2164,7 @@
             "3484111e0c147f1d"
         ],
         "x": 535,
-        "y": 3840,
+        "y": 3880,
         "wires": []
     },
     {
@@ -2149,7 +2178,7 @@
             "fbf08e5fe9f4d457"
         ],
         "x": 865,
-        "y": 3860,
+        "y": 3900,
         "wires": []
     },
     {
@@ -2166,7 +2195,7 @@
             "695c774f6a4a856c"
         ],
         "x": 735,
-        "y": 3860,
+        "y": 3900,
         "wires": []
     },
     {
@@ -2188,7 +2217,7 @@
         "allowrate": false,
         "outputs": 1,
         "x": 535,
-        "y": 3880,
+        "y": 3920,
         "wires": [
             [
                 "a194d606d2c36f0c"
@@ -2215,7 +2244,7 @@
         "allowrate": false,
         "outputs": 1,
         "x": 865,
-        "y": 3900,
+        "y": 3940,
         "wires": [
             [
                 "d199768c970a404f"
@@ -2234,7 +2263,7 @@
             "fbf08e5fe9f4d457"
         ],
         "x": 1065,
-        "y": 3900,
+        "y": 3940,
         "wires": []
     },
     {
@@ -2245,7 +2274,7 @@
         "name": "Elect Primary/Secondary",
         "info": "",
         "x": 330,
-        "y": 3420,
+        "y": 3460,
         "wires": []
     },
     {
@@ -2274,7 +2303,7 @@
         "to": "",
         "reg": false,
         "x": 580,
-        "y": 3760,
+        "y": 3800,
         "wires": [
             [
                 "9da53c72d3d77292"
@@ -2307,7 +2336,7 @@
         "to": "",
         "reg": false,
         "x": 610,
-        "y": 3940,
+        "y": 3980,
         "wires": [
             [
                 "f0bb2e3b8a4db6ac"
@@ -2328,7 +2357,7 @@
         "payloadType": "json",
         "block": false,
         "x": 750,
-        "y": 3940,
+        "y": 3980,
         "wires": [
             []
         ]
@@ -2347,7 +2376,7 @@
         "payloadType": "json",
         "block": false,
         "x": 710,
-        "y": 3760,
+        "y": 3800,
         "wires": [
             []
         ]
@@ -2360,7 +2389,7 @@
         "name": "Health check",
         "info": "",
         "x": 290,
-        "y": 4040,
+        "y": 4080,
         "wires": []
     },
     {
@@ -2374,7 +2403,7 @@
         "upload": false,
         "swaggerDoc": "",
         "x": 270,
-        "y": 4100,
+        "y": 4140,
         "wires": [
             [
                 "507cce674d0f12d6"
@@ -2390,7 +2419,7 @@
         "statusCode": "",
         "headers": {},
         "x": 550,
-        "y": 4100,
+        "y": 4140,
         "wires": []
     },
     {
@@ -2419,7 +2448,7 @@
         "to": "",
         "reg": false,
         "x": 420,
-        "y": 4100,
+        "y": 4140,
         "wires": [
             [
                 "3c5d87dbdc9a0a2c"
@@ -2447,7 +2476,7 @@
         "to": "",
         "reg": false,
         "x": 410,
-        "y": 4140,
+        "y": 4180,
         "wires": [
             []
         ]
@@ -2473,7 +2502,7 @@
         "to": "",
         "reg": false,
         "x": 410,
-        "y": 4180,
+        "y": 4220,
         "wires": [
             []
         ]
@@ -2488,7 +2517,7 @@
             "bf84f00af773ae55"
         ],
         "x": 260,
-        "y": 4140,
+        "y": 4180,
         "wires": [
             [
                 "5f6c31b4abc8077c"
@@ -2506,7 +2535,7 @@
             "088242062a8edf86"
         ],
         "x": 270,
-        "y": 4180,
+        "y": 4220,
         "wires": [
             [
                 "d17844f69c0a434e"
@@ -2586,6 +2615,13 @@
                 "pt": "flow",
                 "to": "GB_ID",
                 "tot": "env"
+            },
+            {
+                "t": "set",
+                "p": "debug",
+                "pt": "flow",
+                "to": "$env(\"DEBUG\") = \"true\" ? true : false",
+                "tot": "jsonata"
             }
         ],
         "action": "",
@@ -2636,6 +2672,13 @@
                 "pt": "flow",
                 "to": "payload",
                 "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "vector",
+                "pt": "flow",
+                "to": "$length($env(\"VECTOR_URL\")) = 0 ? false : $env(\"VECTOR_URL\")",
+                "tot": "str"
             }
         ],
         "action": "",
@@ -3627,7 +3670,7 @@
         "repair": false,
         "outputs": 2,
         "x": 390,
-        "y": 3600,
+        "y": 3640,
         "wires": [
             [
                 "1972856ebcf4fd08"
@@ -3655,7 +3698,7 @@
         "senderr": false,
         "headers": [],
         "x": 530,
-        "y": 3640,
+        "y": 3680,
         "wires": [
             [
                 "e4140757ba2e1d5d"
@@ -3672,7 +3715,7 @@
         "action": "",
         "pretty": false,
         "x": 650,
-        "y": 3640,
+        "y": 3680,
         "wires": [
             [
                 "e3a7bdd291dc874f"
@@ -3701,7 +3744,7 @@
         "repair": false,
         "outputs": 2,
         "x": 780,
-        "y": 3640,
+        "y": 3680,
         "wires": [
             [
                 "264ce3bcd8f56fe2"
@@ -3732,7 +3775,7 @@
         "to": "",
         "reg": false,
         "x": 920,
-        "y": 3620,
+        "y": 3660,
         "wires": [
             [
                 "1437e30492222fdc"
@@ -3750,7 +3793,7 @@
             "5a5ed27cce4a9ee1"
         ],
         "x": 1045,
-        "y": 3560,
+        "y": 3600,
         "wires": []
     },
     {
@@ -3763,7 +3806,7 @@
             "1437e30492222fdc"
         ],
         "x": 225,
-        "y": 3840,
+        "y": 3880,
         "wires": [
             [
                 "f41773382fda2a90"
@@ -3791,7 +3834,7 @@
         "to": "",
         "reg": false,
         "x": 930,
-        "y": 3660,
+        "y": 3700,
         "wires": [
             [
                 "1437e30492222fdc"
@@ -3815,7 +3858,7 @@
         "repair": false,
         "outputs": 1,
         "x": 390,
-        "y": 3500,
+        "y": 3540,
         "wires": [
             [
                 "fa24a2f54b4ae1a2"
@@ -3839,7 +3882,7 @@
         "repair": false,
         "outputs": 1,
         "x": 450,
-        "y": 3760,
+        "y": 3800,
         "wires": [
             [
                 "b6e7189343a699c5",
@@ -3864,7 +3907,7 @@
         "repair": false,
         "outputs": 1,
         "x": 450,
-        "y": 3940,
+        "y": 3980,
         "wires": [
             [
                 "11e84d462d0da702"
@@ -6801,7 +6844,8 @@
                 "b3030784dff003ef",
                 "ef32dee4dbb35287",
                 "c9abb98c73c06e9a",
-                "16cfbad1f297bfc9"
+                "16cfbad1f297bfc9",
+                "771beeafff6064a0"
             ]
         ]
     },
@@ -8257,6 +8301,188 @@
         "wires": [
             [
                 "f0fc3d4efdfc4442"
+            ]
+        ]
+    },
+    {
+        "id": "1e400f50993f5697",
+        "type": "http in",
+        "z": "3af82246.3634ae",
+        "g": "09f41022a9a7b179",
+        "name": "Debug ?",
+        "url": "/admin/get",
+        "method": "get",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 1360,
+        "y": 1620,
+        "wires": [
+            [
+                "11c04149656ba188"
+            ]
+        ]
+    },
+    {
+        "id": "8044d101f391a928",
+        "type": "http response",
+        "z": "3af82246.3634ae",
+        "g": "09f41022a9a7b179",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 1610,
+        "y": 1620,
+        "wires": []
+    },
+    {
+        "id": "11c04149656ba188",
+        "type": "change",
+        "z": "3af82246.3634ae",
+        "g": "09f41022a9a7b179",
+        "name": "Debug",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{ \"debug\": $flowContext(\"debug\")}",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "statusCode",
+                "pt": "msg",
+                "to": "200",
+                "tot": "num"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1490,
+        "y": 1620,
+        "wires": [
+            [
+                "8044d101f391a928"
+            ]
+        ]
+    },
+    {
+        "id": "f75be9b6709a3ff3",
+        "type": "http in",
+        "z": "3af82246.3634ae",
+        "g": "09f41022a9a7b179",
+        "name": "Set Debug",
+        "url": "/admin/set",
+        "method": "post",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 1360,
+        "y": 1660,
+        "wires": [
+            [
+                "9a72ee0e20a2559c"
+            ]
+        ]
+    },
+    {
+        "id": "9a72ee0e20a2559c",
+        "type": "change",
+        "z": "3af82246.3634ae",
+        "g": "09f41022a9a7b179",
+        "name": "Debug",
+        "rules": [
+            {
+                "t": "set",
+                "p": "debug",
+                "pt": "flow",
+                "to": "payload.debug",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1490,
+        "y": 1660,
+        "wires": [
+            [
+                "32c7010c9f5ae7e8"
+            ]
+        ]
+    },
+    {
+        "id": "32c7010c9f5ae7e8",
+        "type": "http response",
+        "z": "3af82246.3634ae",
+        "g": "09f41022a9a7b179",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 1610,
+        "y": 1660,
+        "wires": []
+    },
+    {
+        "id": "2294c641abe2befc",
+        "type": "comment",
+        "z": "3af82246.3634ae",
+        "g": "09f41022a9a7b179",
+        "name": "Monitor Pub Broker(s)",
+        "info": "",
+        "x": 1400,
+        "y": 1560,
+        "wires": []
+    },
+    {
+        "id": "316a3e3d281f53aa",
+        "type": "function",
+        "z": "3af82246.3634ae",
+        "g": "0e2c3f294eb753b6",
+        "name": "Vector",
+        "func": "const BATCH_SIZE = 100;\nconst BATCH_TIMEOUT = 5000;\nconst VECTOR_URL = flow.get(\"vector\"); // e.g. http://vector:8686\n\nif (!VECTOR_URL) return;\n\nconst record = {\n    received_at: Date.now(),\n    centre_id: flow.get('centreid'),\n    topic: msg.topic,\n    payload: msg.payload\n};\n\nlet batch = context.get('batch') || [];\nlet timer = context.get('timer');\n\nbatch.push(record);\ncontext.set('batch', batch);\n\nconst flush = () => {\n    let current = context.get('batch') || [];\n    if (current.length === 0) return;\n    context.set('batch', []);\n    context.set('timer', null);\n\n    const body = current.map(r => JSON.stringify(r)).join('\\n');\n    const url = new URL(VECTOR_URL);\n    const options = {\n        hostname: url.hostname,\n        port: url.port || 80,\n        path: url.pathname,\n        method: 'POST',\n        headers: {\n            'Content-Type': 'application/x-ndjson',\n            'Content-Length': Buffer.byteLength(body)\n        }\n    };\n\n    const req = http.request(options, (res) => {\n        if (res.statusCode !== 200) {\n            node.error(`Vector returned ${res.statusCode}`);\n        }\n    });\n    req.on('error', (e) => node.error(`Vector error: ${e.message}`));\n    req.write(body);\n    req.end();\n};\n\nif (batch.length >= BATCH_SIZE) {\n    if (timer) clearTimeout(timer);\n    flush();\n} else if (!timer) {\n    context.set('timer', setTimeout(flush, BATCH_TIMEOUT));\n}",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "// Code added here will be run when the\n// node is being stopped or re-deployed.\nlet timer = context.get('timer');\nif (timer) clearTimeout(timer);",
+        "libs": [
+            {
+                "var": "http",
+                "module": "http"
+            }
+        ],
+        "x": 950,
+        "y": 3360,
+        "wires": []
+    },
+    {
+        "id": "771beeafff6064a0",
+        "type": "switch",
+        "z": "3af82246.3634ae",
+        "g": "0e2c3f294eb753b6",
+        "name": "Debug ?",
+        "property": "debug",
+        "propertyType": "flow",
+        "rules": [
+            {
+                "t": "true"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 820,
+        "y": 3360,
+        "wires": [
+            [
+                "316a3e3d281f53aa"
             ]
         ]
     }
