@@ -221,8 +221,7 @@
             "46cbf8ba65935c62",
             "71f555651063bd77",
             "8ee7b122c51dd196",
-            "2132e6137bbbed12",
-            "1d1a01aadd537891"
+            "2132e6137bbbed12"
         ],
         "x": 174,
         "y": 119,
@@ -4136,8 +4135,7 @@
                 "e16278c4105cfffa",
                 "2cf408b056052ecc",
                 "3cd8aaefc1a0b53a",
-                "71818a4b480ec0c9",
-                "1d1a01aadd537891"
+                "71818a4b480ec0c9"
             ]
         ]
     },
@@ -8211,25 +8209,6 @@
         ]
     },
     {
-        "id": "1d1a01aadd537891",
-        "type": "function",
-        "z": "3af82246.3634ae",
-        "g": "ce2cac978984a426",
-        "name": "Brokers ?",
-        "func": "// Map each possible broker to the env var that defines it and the Name you gave the MQTT node\nvar brokerDefs = [\n    { env: 'MQTT_PUB_BROKER', name: 'broker1' },\n    { env: 'MQTT_PUB_BROKER_2', name: 'broker2' },\n    { env: 'MQTT_PUB_BROKER_3', name: 'broker3' },\n    { env: 'MQTT_PUB_BROKER_4', name: 'broker4' }\n];\n\n// Keep only the brokers whose env var actually exists and is non-empty\nvar active = brokerDefs\n    .filter(function (b) {\n        var v = env.get(b.env);\n        return v !== undefined && v !== null && v !== '';\n    })\n    .map(function (b) { return b.name; });\n\nflow.set('activeBrokers', active);\n\n// Initialize connection state for each active broker to false\nvar state = {};\nactive.forEach(function (n) { state[n] = false; });\nflow.set('brokerState', state);\n\n// Nothing connected yet at startup\nflow.set('anyBrokersConnected', false);\n\nreturn null;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 580,
-        "y": 740,
-        "wires": [
-            []
-        ]
-    },
-    {
         "id": "247d1e7ae4d193df",
         "type": "status",
         "z": "3af82246.3634ae",
@@ -8256,7 +8235,7 @@
         "z": "3af82246.3634ae",
         "g": "f49a346025a2dc9a",
         "name": "Connected",
-        "func": "var active = flow.get('activeBrokers') || [];\nvar name = msg.status.source.name;\n\n// Ignore status updates from brokers that aren't in our active list\nif (active.indexOf(name) === -1) return null;\n\nvar state = flow.get('brokerState') || {};\nstate[name] = (msg.status.text === 'connected');\nflow.set('brokerState', state);\n\n// True as soon as at least one active broker is connected\nvar anyConnected = active.some(function (n) { return state[n] === true; });\nflow.set('anyBrokersConnected', anyConnected);\n\nreturn null;",
+        "func": "var state = flow.get('brokerState') || {};\nvar id = msg.status.source.id;\n\n// true only when this specific node's dot is green (connected)\nstate[id] = (msg.status.fill === 'green');\nflow.set('brokerState', state);\n\n// true as soon as any tracked node is connected\nvar anyConnected = Object.keys(state).some(function (k) { return state[k] === true; });\nflow.set('anyBrokersConnected', anyConnected);\n\nreturn null;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
