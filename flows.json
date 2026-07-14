@@ -512,11 +512,11 @@
         "nodes": [
             "1e400f50993f5697",
             "8044d101f391a928",
-            "11c04149656ba188",
             "f75be9b6709a3ff3",
-            "9a72ee0e20a2559c",
             "32c7010c9f5ae7e8",
-            "2294c641abe2befc"
+            "2294c641abe2befc",
+            "3ceac5937818707b",
+            "7fe20ec81bc84e6d"
         ],
         "x": 1274,
         "y": 1519,
@@ -8278,7 +8278,7 @@
         "y": 1620,
         "wires": [
             [
-                "11c04149656ba188"
+                "7fe20ec81bc84e6d"
             ]
         ]
     },
@@ -8295,41 +8295,6 @@
         "wires": []
     },
     {
-        "id": "11c04149656ba188",
-        "type": "change",
-        "z": "3af82246.3634ae",
-        "g": "09f41022a9a7b179",
-        "name": "Debug",
-        "rules": [
-            {
-                "t": "set",
-                "p": "payload",
-                "pt": "msg",
-                "to": "{ \"debug\": $flowContext(\"debug\")}",
-                "tot": "jsonata"
-            },
-            {
-                "t": "set",
-                "p": "statusCode",
-                "pt": "msg",
-                "to": "200",
-                "tot": "num"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 1490,
-        "y": 1620,
-        "wires": [
-            [
-                "8044d101f391a928"
-            ]
-        ]
-    },
-    {
         "id": "f75be9b6709a3ff3",
         "type": "http in",
         "z": "3af82246.3634ae",
@@ -8344,35 +8309,7 @@
         "y": 1660,
         "wires": [
             [
-                "9a72ee0e20a2559c"
-            ]
-        ]
-    },
-    {
-        "id": "9a72ee0e20a2559c",
-        "type": "change",
-        "z": "3af82246.3634ae",
-        "g": "09f41022a9a7b179",
-        "name": "Debug",
-        "rules": [
-            {
-                "t": "set",
-                "p": "debug",
-                "pt": "flow",
-                "to": "payload.debug",
-                "tot": "msg"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 1490,
-        "y": 1660,
-        "wires": [
-            [
-                "32c7010c9f5ae7e8"
+                "3ceac5937818707b"
             ]
         ]
     },
@@ -8405,8 +8342,8 @@
         "z": "3af82246.3634ae",
         "g": "0e2c3f294eb753b6",
         "name": "Vector",
-        "func": "const BATCH_SIZE = 100;\nconst BATCH_TIMEOUT = 5000;\nconst VECTOR_URL = flow.get(\"vector\"); // e.g. http://vector:8686\n\nif (!VECTOR_URL) return;\n\nconst record = {\n    received_at: Date.now(),\n    centre_id: flow.get('centreid'),\n    topic: msg.topic,\n    payload: msg.payload\n};\n\nlet batch = context.get('batch') || [];\nlet timer = context.get('timer');\n\nbatch.push(record);\ncontext.set('batch', batch);\n\nconst flush = () => {\n    let current = context.get('batch') || [];\n    if (current.length === 0) return;\n    context.set('batch', []);\n    context.set('timer', null);\n\n    const body = current.map(r => JSON.stringify(r)).join('\\n');\n    const url = new URL(VECTOR_URL);\n    const options = {\n        hostname: url.hostname,\n        port: url.port || 80,\n        path: url.pathname,\n        method: 'POST',\n        headers: {\n            'Content-Type': 'application/x-ndjson',\n            'Content-Length': Buffer.byteLength(body)\n        }\n    };\n\n    const req = http.request(options, (res) => {\n        if (res.statusCode !== 200) {\n            node.error(`Vector returned ${res.statusCode}`);\n        }\n    });\n    req.on('error', (e) => node.error(`Vector error: ${e.message}`));\n    req.write(body);\n    req.end();\n};\n\nif (batch.length >= BATCH_SIZE) {\n    if (timer) clearTimeout(timer);\n    flush();\n} else if (!timer) {\n    context.set('timer', setTimeout(flush, BATCH_TIMEOUT));\n}",
-        "outputs": 0,
+        "func": "const BATCH_SIZE = 100;\nconst BATCH_TIMEOUT = 5000;\nconst VECTOR_URL = flow.get(\"vector\"); // e.g. http://vector:8686\n\nif (!VECTOR_URL) return;\n\n// --- topic filter (regex compiled once, at /admin/set) ---\nconst topicMatchRegex = flow.get('topic_match_compiled');\nif (topicMatchRegex && !topicMatchRegex.test(msg.topic)) {\n    return; // topic doesn't match, drop silently\n}\n// --- end filter ---\n\nconst record = {\n    received_at: Date.now(),\n    centre_id: flow.get('centreid'),\n    topic: msg.topic,\n    payload: msg.payload\n};\n\nlet batch = context.get('batch') || [];\nlet timer = context.get('timer');\n\nbatch.push(record);\ncontext.set('batch', batch);\n\nconst flush = () => {\n    let current = context.get('batch') || [];\n    if (current.length === 0) return;\n    context.set('batch', []);\n    context.set('timer', null);\n\n    const body = current.map(r => JSON.stringify(r)).join('\\n');\n    const url = new URL(VECTOR_URL);\n    const options = {\n        hostname: url.hostname,\n        port: url.port || 80,\n        path: url.pathname,\n        method: 'POST',\n        headers: {\n            'Content-Type': 'application/x-ndjson',\n            'Content-Length': Buffer.byteLength(body)\n        }\n    };\n\n    const req = http.request(options, (res) => {\n        if (res.statusCode !== 200) {\n            node.error(`Vector returned ${res.statusCode}`);\n        }\n    });\n    req.on('error', (e) => node.error(`Vector error: ${e.message}`));\n    req.write(body);\n    req.end();\n\n    // --- echo what was sent, for debugging ---\n    if (flow.get('debug')) {\n        node.send({\n            payload: body,\n            topic: 'vector-batch',\n            count: current.length\n        });\n    }\n    // --- end echo ---\n};\n\nif (batch.length >= BATCH_SIZE) {\n    if (timer) clearTimeout(timer);\n    flush();\n} else if (!timer) {\n    context.set('timer', setTimeout(flush, BATCH_TIMEOUT));\n}",
+        "outputs": 1,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -8419,7 +8356,9 @@
         ],
         "x": 950,
         "y": 3360,
-        "wires": []
+        "wires": [
+            []
+        ]
     },
     {
         "id": "771beeafff6064a0",
@@ -8471,6 +8410,62 @@
         "y": 260,
         "wires": [
             []
+        ]
+    },
+    {
+        "id": "3ceac5937818707b",
+        "type": "function",
+        "z": "3af82246.3634ae",
+        "g": "09f41022a9a7b179",
+        "name": "Set",
+        "func": "const payload = msg.payload || {};\n\nif (typeof payload.debug !== 'undefined') {\n    flow.set('debug', !!payload.debug);\n}\n\nif (typeof payload.topic_match !== 'undefined') {\n    const pattern = payload.topic_match;\n\n    if (!pattern) {\n        flow.set('topic_match', null);\n        flow.set('topic_match_compiled', null);\n    } else {\n        try {\n            const compiled = new RegExp(pattern);\n            flow.set('topic_match', pattern);          // raw string, for display\n            flow.set('topic_match_compiled', compiled); // compiled, for the hot path\n        } catch (e) {\n            node.error(`Invalid topic_match regexp: ${e.message}`);\n            msg.statusCode = 400;\n            msg.payload = { error: `Invalid topic_match regexp: ${e.message}` };\n            return msg;\n        }\n    }\n}\n\nmsg.payload = {\n    debug: flow.get('debug') || false,\n    topic_match: flow.get('topic_match') || null\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1490,
+        "y": 1660,
+        "wires": [
+            [
+                "32c7010c9f5ae7e8"
+            ]
+        ]
+    },
+    {
+        "id": "7fe20ec81bc84e6d",
+        "type": "change",
+        "z": "3af82246.3634ae",
+        "g": "09f41022a9a7b179",
+        "name": "Show",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{ \"debug\": $flowContext(\"debug\"), \"topic_match\": $flowContext(\"topic_match\") }",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "statusCode",
+                "pt": "msg",
+                "to": "200",
+                "tot": "num"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1490,
+        "y": 1620,
+        "wires": [
+            [
+                "8044d101f391a928"
+            ]
         ]
     }
 ]
