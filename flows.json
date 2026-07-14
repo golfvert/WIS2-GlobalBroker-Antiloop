@@ -211,7 +211,6 @@
             "c03e4bc6c7500973",
             "b932c19aaf446f99",
             "0a2d2f9bda033e80",
-            "0f57f53261a620c4",
             "71818a4b480ec0c9",
             "8bc2d689650ac4b8",
             "4f5d23434528e0f2",
@@ -221,7 +220,8 @@
             "46cbf8ba65935c62",
             "71f555651063bd77",
             "8ee7b122c51dd196",
-            "2132e6137bbbed12"
+            "2132e6137bbbed12",
+            "6c4fefae79b09896"
         ],
         "x": 174,
         "y": 119,
@@ -7907,32 +7907,8 @@
         "y": 300,
         "wires": [
             [
-                "0f57f53261a620c4"
+                "6c4fefae79b09896"
             ]
-        ]
-    },
-    {
-        "id": "0f57f53261a620c4",
-        "type": "function",
-        "z": "3af82246.3634ae",
-        "g": "ce2cac978984a426",
-        "name": "Compile WNM",
-        "func": "const schema = msg.schema;\ntry {\n  const linksItems = schema.allOf[1].properties.data.properties.links.items;\n  delete linksItems.$id;\n  delete linksItems.$schema;\n} catch (e) {}\n\nconst ajv = new Ajv({ allErrors: true, strict: false });\nflow.set(\"WNM_Validator\", ajv.compile(schema));\nreturn null;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [
-            {
-                "var": "Ajv",
-                "module": "ajv/dist/2020"
-            }
-        ],
-        "x": 1360,
-        "y": 260,
-        "wires": [
-            []
         ]
     },
     {
@@ -8148,7 +8124,7 @@
         "z": "3af82246.3634ae",
         "g": "ce2cac978984a426",
         "name": "Compile WME",
-        "func": "const schema = msg.schema;\ntry {\n  const linksItems = schema.allOf[1].properties.data.properties.links.items;\n  delete linksItems.$id;\n  delete linksItems.$schema;\n} catch (e) {}\n\nconst ajv = new Ajv({ allErrors: true, strict: false });\nflow.set(\"WME_Validator\", ajv.compile(schema));\nreturn null;",
+        "func": "const schema = msg.schema;\ntry {\n  const linksItems = schema.allOf[1].properties.data.properties.links.items;\n  delete linksItems.$id;\n  delete linksItems.$schema;\n} catch (e) {}\n\nconst ajv = new Ajv({ allErrors: true, strict: false });\naddFormats(ajv);\nflow.set(\"WME_Validator\", ajv.compile(schema));\nreturn null;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -8158,6 +8134,10 @@
             {
                 "var": "Ajv",
                 "module": "ajv/dist/2020"
+            },
+            {
+                "var": "addFormats",
+                "module": "ajv-formats"
             }
         ],
         "x": 1360,
@@ -8183,7 +8163,7 @@
         "y": 260,
         "wires": [
             [
-                "0f57f53261a620c4"
+                "6c4fefae79b09896"
             ]
         ]
     },
@@ -8463,6 +8443,34 @@
             [
                 "316a3e3d281f53aa"
             ]
+        ]
+    },
+    {
+        "id": "6c4fefae79b09896",
+        "type": "function",
+        "z": "3af82246.3634ae",
+        "g": "ce2cac978984a426",
+        "name": "Compile WNM",
+        "func": "const schema = msg.schema;\ntry {\n  const linksItems = schema.allOf[1].properties.data.properties.links.items;\n  delete linksItems.$id;\n  delete linksItems.$schema;\n} catch (e) {}\n\nconst ajv = new Ajv({ allErrors: true, strict: false });\naddFormats(ajv);\nflow.set(\"WNM_Validator\", ajv.compile(schema));\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [
+            {
+                "var": "Ajv",
+                "module": "ajv/dist/2020"
+            },
+            {
+                "var": "addFormats",
+                "module": "ajv-formats"
+            }
+        ],
+        "x": 1360,
+        "y": 260,
+        "wires": [
+            []
         ]
     }
 ]
