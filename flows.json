@@ -36,13 +36,14 @@
             "72d0fec8655e3fa4",
             "2dccfafe11e0a4df",
             "cc90e145bb4ca7fd",
-            "fcde7b4b83fc45d2",
             "695c774f6a4a856c",
             "4a5f81d539e114f1",
-            "39af1a7eaf26c282",
-            "f161d5e88609338c",
-            "8f963441c43db583",
-            "40065405ae45eebb"
+            "40065405ae45eebb",
+            "247d1e7ae4d193df",
+            "649d4a1594dbe726",
+            "03478ca0e9f9fdba",
+            "9cc0d1eb57271350",
+            "42025168397e76f0"
         ],
         "x": 174,
         "y": 839,
@@ -127,12 +128,18 @@
             "225fb9b32f8b87a0",
             "0b7db5e2a563f7ee",
             "3f291a7f649259e7",
-            "a9c4d402f2216f61"
+            "a9c4d402f2216f61",
+            "203ad6e1833349ef",
+            "35b8b80d5040b0eb",
+            "71575ea71946e1f8",
+            "594924c665531883",
+            "3c354b985b205050",
+            "64965e9acdd0fbc3"
         ],
         "x": 174,
         "y": 3419,
         "w": 932,
-        "h": 602
+        "h": 662
     },
     {
         "id": "704fe7a0a3413400",
@@ -158,7 +165,7 @@
             "3484111e0c147f1d"
         ],
         "x": 174,
-        "y": 4039,
+        "y": 4099,
         "w": 452,
         "h": 222
     },
@@ -257,7 +264,7 @@
             "35db291da8249070"
         ],
         "x": 174,
-        "y": 1879,
+        "y": 1719,
         "w": 1092,
         "h": 142
     },
@@ -332,7 +339,7 @@
             "83470c69926a4c78"
         ],
         "x": 174,
-        "y": 1719,
+        "y": 1879,
         "w": 1392,
         "h": 142
     },
@@ -474,29 +481,6 @@
         "h": 1362
     },
     {
-        "id": "f49a346025a2dc9a",
-        "type": "group",
-        "z": "3af82246.3634ae",
-        "style": {
-            "stroke": "#999999",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "fill-opacity": "1",
-            "label": true,
-            "label-position": "nw",
-            "color": "#767676"
-        },
-        "nodes": [
-            "247d1e7ae4d193df",
-            "649d4a1594dbe726",
-            "bcd849406ba58ee9"
-        ],
-        "x": 954,
-        "y": 1519,
-        "w": 312,
-        "h": 182
-    },
-    {
         "id": "09f41022a9a7b179",
         "type": "group",
         "z": "3af82246.3634ae",
@@ -518,7 +502,7 @@
             "3ceac5937818707b",
             "7fe20ec81bc84e6d"
         ],
-        "x": 1274,
+        "x": 954,
         "y": 1519,
         "w": 412,
         "h": 182
@@ -695,7 +679,7 @@
     {
         "id": "317936126dce3abb",
         "type": "prometheus-metric-config",
-        "name": "antiloop_wis2_gb_connected_flag",
+        "name": "monitor_wis2_gb_all_connected_flag",
         "help": "Connection status to local broker",
         "labels": "centre_id",
         "mtype": "gauge"
@@ -2358,7 +2342,9 @@
         "x": 750,
         "y": 3980,
         "wires": [
-            []
+            [
+                "35b8b80d5040b0eb"
+            ]
         ]
     },
     {
@@ -2377,7 +2363,9 @@
         "x": 710,
         "y": 3800,
         "wires": [
-            []
+            [
+                "203ad6e1833349ef"
+            ]
         ]
     },
     {
@@ -2388,7 +2376,7 @@
         "name": "Health check",
         "info": "",
         "x": 290,
-        "y": 4080,
+        "y": 4140,
         "wires": []
     },
     {
@@ -2402,7 +2390,7 @@
         "upload": false,
         "swaggerDoc": "",
         "x": 270,
-        "y": 4140,
+        "y": 4200,
         "wires": [
             [
                 "507cce674d0f12d6"
@@ -2418,7 +2406,7 @@
         "statusCode": "",
         "headers": {},
         "x": 550,
-        "y": 4140,
+        "y": 4200,
         "wires": []
     },
     {
@@ -2447,7 +2435,7 @@
         "to": "",
         "reg": false,
         "x": 420,
-        "y": 4140,
+        "y": 4200,
         "wires": [
             [
                 "3c5d87dbdc9a0a2c"
@@ -2475,7 +2463,7 @@
         "to": "",
         "reg": false,
         "x": 410,
-        "y": 4180,
+        "y": 4240,
         "wires": [
             []
         ]
@@ -2501,7 +2489,7 @@
         "to": "",
         "reg": false,
         "x": 410,
-        "y": 4220,
+        "y": 4280,
         "wires": [
             []
         ]
@@ -2516,7 +2504,7 @@
             "bf84f00af773ae55"
         ],
         "x": 260,
-        "y": 4180,
+        "y": 4240,
         "wires": [
             [
                 "5f6c31b4abc8077c"
@@ -2534,7 +2522,7 @@
             "088242062a8edf86"
         ],
         "x": 270,
-        "y": 4220,
+        "y": 4280,
         "wires": [
             [
                 "d17844f69c0a434e"
@@ -2663,7 +2651,7 @@
         "type": "change",
         "z": "3af82246.3634ae",
         "g": "ce2cac978984a426",
-        "name": "Save",
+        "name": "Init",
         "rules": [
             {
                 "t": "set",
@@ -2676,8 +2664,15 @@
                 "t": "set",
                 "p": "vector",
                 "pt": "flow",
-                "to": "$length($env(\"VECTOR_URL\")) = 0 ? false : $env(\"VECTOR_URL\")",
+                "to": "$length($env(\"VECTOR_LOG\")) = 0 ? false : $env(\"VECTOR_LOG\")",
                 "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "brokerState",
+                "pt": "flow",
+                "to": "{}",
+                "tot": "json"
             }
         ],
         "action": "",
@@ -3308,7 +3303,7 @@
         "name": "Refresh allowed topics",
         "info": "",
         "x": 320,
-        "y": 1920,
+        "y": 1760,
         "wires": []
     },
     {
@@ -3330,7 +3325,7 @@
         "repair": false,
         "outputs": 1,
         "x": 580,
-        "y": 1980,
+        "y": 1820,
         "wires": [
             [
                 "35db291da8249070"
@@ -3355,7 +3350,7 @@
         "senderr": false,
         "headers": [],
         "x": 830,
-        "y": 1980,
+        "y": 1820,
         "wires": [
             [
                 "51d2cea964219b92",
@@ -3377,7 +3372,7 @@
         "addname": "",
         "property": "payload",
         "x": 950,
-        "y": 1980,
+        "y": 1820,
         "wires": [
             [
                 "dc672f4c2f5746bc"
@@ -3410,7 +3405,7 @@
         "to": "",
         "reg": false,
         "x": 1070,
-        "y": 1980,
+        "y": 1820,
         "wires": [
             [
                 "3edb5da5e7941c37"
@@ -3431,7 +3426,7 @@
         "payloadType": "json",
         "block": false,
         "x": 1190,
-        "y": 1980,
+        "y": 1820,
         "wires": [
             []
         ]
@@ -3446,7 +3441,7 @@
             "2d49c2d7293068cb"
         ],
         "x": 625,
-        "y": 1940,
+        "y": 1780,
         "wires": [
             [
                 "35db291da8249070"
@@ -3494,7 +3489,7 @@
         "to": "",
         "reg": false,
         "x": 950,
-        "y": 1940,
+        "y": 1780,
         "wires": [
             [
                 "aeb035ff965d3e07"
@@ -3515,7 +3510,7 @@
         "payloadType": "json",
         "block": false,
         "x": 1070,
-        "y": 1940,
+        "y": 1780,
         "wires": [
             []
         ]
@@ -3539,7 +3534,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 270,
-        "y": 1980,
+        "y": 1820,
         "wires": [
             [
                 "cb97214fc946340e"
@@ -3560,7 +3555,7 @@
         "payloadType": "json",
         "block": false,
         "x": 450,
-        "y": 1980,
+        "y": 1820,
         "wires": [
             [
                 "9830b7b725f14d83"
@@ -3586,7 +3581,7 @@
         "allowrate": false,
         "outputs": 1,
         "x": 355,
-        "y": 1980,
+        "y": 1820,
         "wires": [
             []
         ],
@@ -3941,7 +3936,7 @@
         "to": "",
         "reg": false,
         "x": 710,
-        "y": 1980,
+        "y": 1820,
         "wires": [
             [
                 "bc302c2998d5d05c"
@@ -5137,7 +5132,7 @@
         "name": "Refresh metadata channels",
         "info": "",
         "x": 340,
-        "y": 1760,
+        "y": 1920,
         "wires": []
     },
     {
@@ -5158,7 +5153,7 @@
         "senderr": false,
         "headers": [],
         "x": 850,
-        "y": 1820,
+        "y": 1980,
         "wires": [
             [
                 "9fb4e17ee94bc71b"
@@ -5179,7 +5174,7 @@
         "addname": "",
         "property": "payload",
         "x": 1090,
-        "y": 1820,
+        "y": 1980,
         "wires": [
             [
                 "691dac0a89d189f9"
@@ -5217,7 +5212,7 @@
         "to": "",
         "reg": false,
         "x": 1370,
-        "y": 1820,
+        "y": 1980,
         "wires": [
             [
                 "228ec0fd12c7c4a8"
@@ -5238,7 +5233,7 @@
         "payloadType": "json",
         "block": false,
         "x": 1490,
-        "y": 1820,
+        "y": 1980,
         "wires": [
             []
         ]
@@ -5253,7 +5248,7 @@
             "2d49c2d7293068cb"
         ],
         "x": 645,
-        "y": 1780,
+        "y": 1940,
         "wires": [
             [
                 "d4615f4385a2f0d4"
@@ -5286,7 +5281,7 @@
         "to": "",
         "reg": false,
         "x": 1100,
-        "y": 1780,
+        "y": 1940,
         "wires": [
             [
                 "507b28c4149ac133"
@@ -5307,7 +5302,7 @@
         "payloadType": "json",
         "block": false,
         "x": 1230,
-        "y": 1780,
+        "y": 1940,
         "wires": [
             []
         ]
@@ -5326,7 +5321,7 @@
         "payloadType": "json",
         "block": false,
         "x": 470,
-        "y": 1820,
+        "y": 1980,
         "wires": [
             [
                 "83470c69926a4c78"
@@ -5352,7 +5347,7 @@
         "onceDelay": "5",
         "topic": "",
         "x": 280,
-        "y": 1820,
+        "y": 1980,
         "wires": [
             [
                 "a3928b9a44530883"
@@ -5378,7 +5373,7 @@
         "allowrate": false,
         "outputs": 1,
         "x": 385,
-        "y": 1820,
+        "y": 1980,
         "wires": [
             [
                 "f62e57c3059db262"
@@ -5414,7 +5409,7 @@
         "to": "",
         "reg": false,
         "x": 730,
-        "y": 1820,
+        "y": 1980,
         "wires": [
             [
                 "3b0765845f999be7"
@@ -5440,7 +5435,7 @@
         "repair": false,
         "outputs": 1,
         "x": 970,
-        "y": 1820,
+        "y": 1980,
         "wires": [
             [
                 "0f92cbf1103eca1a",
@@ -5512,7 +5507,7 @@
         "to": "",
         "reg": false,
         "x": 1220,
-        "y": 1820,
+        "y": 1980,
         "wires": [
             [
                 "9accdaa298e6f733",
@@ -5551,7 +5546,7 @@
         "to": "",
         "reg": false,
         "x": 1370,
-        "y": 1780,
+        "y": 1940,
         "wires": [
             [
                 "4a06872105653c54"
@@ -5572,7 +5567,7 @@
         "payloadType": "json",
         "block": false,
         "x": 1490,
-        "y": 1780,
+        "y": 1940,
         "wires": [
             []
         ]
@@ -5599,7 +5594,7 @@
         "repair": false,
         "outputs": 2,
         "x": 600,
-        "y": 1820,
+        "y": 1980,
         "wires": [
             [
                 "d4615f4385a2f0d4"
@@ -5955,23 +5950,6 @@
         ]
     },
     {
-        "id": "fcde7b4b83fc45d2",
-        "type": "status",
-        "z": "3af82246.3634ae",
-        "g": "2cac6541d3b7ad29",
-        "name": "Publisher",
-        "scope": [
-            "affbfac114622266"
-        ],
-        "x": 260,
-        "y": 1080,
-        "wires": [
-            [
-                "4a5f81d539e114f1"
-            ]
-        ]
-    },
-    {
         "id": "695c774f6a4a856c",
         "type": "link in",
         "z": "3af82246.3634ae",
@@ -5982,7 +5960,7 @@
             "9204f8d517897d74"
         ],
         "x": 385,
-        "y": 1040,
+        "y": 1060,
         "wires": [
             [
                 "4a5f81d539e114f1"
@@ -6013,109 +5991,11 @@
         "qToggle": false,
         "persist": false,
         "storeName": "memory",
-        "x": 420,
-        "y": 1080,
+        "x": 410,
+        "y": 1100,
         "wires": [
             [
-                "39af1a7eaf26c282"
-            ]
-        ]
-    },
-    {
-        "id": "39af1a7eaf26c282",
-        "type": "switch",
-        "z": "3af82246.3634ae",
-        "g": "2cac6541d3b7ad29",
-        "name": "Status ?",
-        "property": "status.fill",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "red",
-                "vt": "str"
-            },
-            {
-                "t": "eq",
-                "v": "yellow",
-                "vt": "str"
-            },
-            {
-                "t": "eq",
-                "v": "green",
-                "vt": "str"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 3,
-        "x": 550,
-        "y": 1080,
-        "wires": [
-            [
-                "f161d5e88609338c"
-            ],
-            [
-                "f161d5e88609338c"
-            ],
-            [
-                "8f963441c43db583"
-            ]
-        ]
-    },
-    {
-        "id": "f161d5e88609338c",
-        "type": "change",
-        "z": "3af82246.3634ae",
-        "g": "2cac6541d3b7ad29",
-        "name": "Prometheus",
-        "rules": [
-            {
-                "t": "set",
-                "p": "payload",
-                "pt": "msg",
-                "to": "{\t   \"op\":\"set\",\t   \"labels\":{\t      \"centre_id\": $flowContext(\"centreid\")\t   },\t   \"val\": 0\t}",
-                "tot": "jsonata"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 720,
-        "y": 1060,
-        "wires": [
-            [
-                "40065405ae45eebb"
-            ]
-        ]
-    },
-    {
-        "id": "8f963441c43db583",
-        "type": "change",
-        "z": "3af82246.3634ae",
-        "g": "2cac6541d3b7ad29",
-        "name": "Prometheus",
-        "rules": [
-            {
-                "t": "set",
-                "p": "payload",
-                "pt": "msg",
-                "to": "{\t   \"op\":\"set\",\t   \"labels\":{\t      \"centre_id\": $flowContext(\"centreid\")\t   },\t   \"val\": 1\t}",
-                "tot": "jsonata"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 710,
-        "y": 1120,
-        "wires": [
-            [
-                "40065405ae45eebb"
+                "649d4a1594dbe726"
             ]
         ]
     },
@@ -6126,8 +6006,8 @@
         "g": "2cac6541d3b7ad29",
         "name": "Pub",
         "metric": "317936126dce3abb",
-        "x": 880,
-        "y": 1080,
+        "x": 990,
+        "y": 1100,
         "wires": []
     },
     {
@@ -8189,57 +8069,6 @@
         ]
     },
     {
-        "id": "247d1e7ae4d193df",
-        "type": "status",
-        "z": "3af82246.3634ae",
-        "g": "f49a346025a2dc9a",
-        "name": "Brokers",
-        "scope": [
-            "affbfac114622266",
-            "adf9f9e953278517",
-            "87d31bf57fc4368a",
-            "6bc1cafe3c62eedd",
-            "3cda36254c15a40a"
-        ],
-        "x": 1030,
-        "y": 1660,
-        "wires": [
-            [
-                "649d4a1594dbe726"
-            ]
-        ]
-    },
-    {
-        "id": "649d4a1594dbe726",
-        "type": "function",
-        "z": "3af82246.3634ae",
-        "g": "f49a346025a2dc9a",
-        "name": "Connected",
-        "func": "var state = flow.get('brokerState') || {};\nvar id = msg.status.source.id;\n\n// true only when this specific node's dot is green (connected)\nstate[id] = (msg.status.fill === 'green');\nflow.set('brokerState', state);\n\n// true as soon as any tracked node is connected\nvar anyConnected = Object.keys(state).some(function (k) { return state[k] === true; });\nflow.set('anyBrokersConnected', anyConnected);\n\nreturn null;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1170,
-        "y": 1660,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "bcd849406ba58ee9",
-        "type": "comment",
-        "z": "3af82246.3634ae",
-        "g": "f49a346025a2dc9a",
-        "name": "Monitor Pub Broker(s)",
-        "info": "",
-        "x": 1080,
-        "y": 1560,
-        "wires": []
-    },
-    {
         "id": "f90c3c2a4495decc",
         "type": "switch",
         "z": "3af82246.3634ae",
@@ -8274,7 +8103,7 @@
         "upload": false,
         "skipBodyParsing": false,
         "swaggerDoc": "",
-        "x": 1360,
+        "x": 1040,
         "y": 1620,
         "wires": [
             [
@@ -8290,7 +8119,7 @@
         "name": "",
         "statusCode": "",
         "headers": {},
-        "x": 1610,
+        "x": 1290,
         "y": 1620,
         "wires": []
     },
@@ -8305,7 +8134,7 @@
         "upload": false,
         "skipBodyParsing": false,
         "swaggerDoc": "",
-        "x": 1360,
+        "x": 1040,
         "y": 1660,
         "wires": [
             [
@@ -8321,7 +8150,7 @@
         "name": "",
         "statusCode": "",
         "headers": {},
-        "x": 1610,
+        "x": 1290,
         "y": 1660,
         "wires": []
     },
@@ -8330,9 +8159,9 @@
         "type": "comment",
         "z": "3af82246.3634ae",
         "g": "09f41022a9a7b179",
-        "name": "Monitor Pub Broker(s)",
+        "name": "Set Debug",
         "info": "",
-        "x": 1400,
+        "x": 1040,
         "y": 1560,
         "wires": []
     },
@@ -8342,8 +8171,8 @@
         "z": "3af82246.3634ae",
         "g": "0e2c3f294eb753b6",
         "name": "Vector",
-        "func": "const BATCH_SIZE = 100;\nconst BATCH_TIMEOUT = 5000;\nconst VECTOR_URL = flow.get(\"vector\"); // e.g. http://vector:8686\n\nif (!VECTOR_URL) return;\n\n// --- topic filter (regex compiled once, at /admin/set) ---\nconst topicMatchRegex = flow.get('topic_match_compiled');\nif (topicMatchRegex && !topicMatchRegex.test(msg.topic)) {\n    return; // topic doesn't match, drop silently\n}\n// --- end filter ---\n\nconst record = {\n    received_at: Date.now(),\n    centre_id: flow.get('centreid'),\n    topic: msg.topic,\n    payload: msg.payload\n};\n\nlet batch = context.get('batch') || [];\nlet timer = context.get('timer');\n\nbatch.push(record);\ncontext.set('batch', batch);\n\nconst flush = () => {\n    let current = context.get('batch') || [];\n    if (current.length === 0) return;\n    context.set('batch', []);\n    context.set('timer', null);\n\n    const body = current.map(r => JSON.stringify(r)).join('\\n');\n    const url = new URL(VECTOR_URL);\n    const options = {\n        hostname: url.hostname,\n        port: url.port || 80,\n        path: url.pathname,\n        method: 'POST',\n        headers: {\n            'Content-Type': 'application/x-ndjson',\n            'Content-Length': Buffer.byteLength(body)\n        }\n    };\n\n    const req = http.request(options, (res) => {\n        if (res.statusCode !== 200) {\n            node.error(`Vector returned ${res.statusCode}`);\n        }\n    });\n    req.on('error', (e) => node.error(`Vector error: ${e.message}`));\n    req.write(body);\n    req.end();\n\n    // --- echo what was sent, for debugging ---\n    if (flow.get('debug')) {\n        node.send({\n            payload: body,\n            topic: 'vector-batch',\n            count: current.length\n        });\n    }\n    // --- end echo ---\n};\n\nif (batch.length >= BATCH_SIZE) {\n    if (timer) clearTimeout(timer);\n    flush();\n} else if (!timer) {\n    context.set('timer', setTimeout(flush, BATCH_TIMEOUT));\n}",
-        "outputs": 1,
+        "func": "const BATCH_SIZE = 100;\nconst BATCH_TIMEOUT = 5000;\nconst VECTOR_LOG = flow.get(\"vector\"); // \"docker\", or an http(s) URL like https://vector:8686\n\nif (!VECTOR_LOG) return;\n\n// --- topic filter (regex compiled once, at /admin/set) ---\nconst topicMatchRegex = flow.get('topic_match_compiled');\nif (topicMatchRegex && !topicMatchRegex.test(msg.topic)) {\n    return; // topic doesn't match, drop silently\n}\n// --- end filter ---\n\nconst record = {\n    received_at: Date.now(),\n    received_from: flow.get('centreid'),\n    topic: msg.topic,\n    payload: msg.payload\n};\n\nlet batch = context.get('batch') || [];\nlet timer = context.get('timer');\n\nbatch.push(record);\ncontext.set('batch', batch);\n\nconst flush = () => {\n    let current = context.get('batch') || [];\n    if (current.length === 0) return;\n    context.set('batch', []);\n    context.set('timer', null);\n\n    const body = current.map(r => JSON.stringify(r)).join('\\n');\n\n    if (VECTOR_LOG === 'docker') {\n        // Write straight to Node-RED's stdout — captured by Docker's log driver\n        console.log(body);\n    } else if (/^https?:\\/\\//i.test(VECTOR_LOG)) {\n        const url = new URL(VECTOR_LOG);\n        const isHttps = url.protocol === 'https:';\n        const client = isHttps ? https : http;\n\n        const options = {\n            hostname: url.hostname,\n            port: url.port || (isHttps ? 443 : 80),\n            path: url.pathname,\n            method: 'POST',\n            headers: {\n                'Content-Type': 'application/x-ndjson',\n                'Content-Length': Buffer.byteLength(body)\n            },\n            rejectUnauthorized: false\n        };\n\n        const req = client.request(options, (res) => {\n            if (res.statusCode !== 200) {\n                node.error(`Vector returned ${res.statusCode}`);\n            }\n        });\n        req.on('error', (e) => node.error(`Vector error: ${e.message}`));\n        req.write(body);\n        req.end();\n    } else {\n        node.error(`Unrecognized VECTOR_LOG value: \"${VECTOR_LOG}\" (expected \"docker\" or an http(s) URL)`);\n    }\n};\n\nif (batch.length >= BATCH_SIZE) {\n    if (timer) clearTimeout(timer);\n    flush();\n} else if (!timer) {\n    context.set('timer', setTimeout(flush, BATCH_TIMEOUT));\n}",
+        "outputs": 0,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -8352,13 +8181,15 @@
             {
                 "var": "http",
                 "module": "http"
+            },
+            {
+                "var": "https",
+                "module": "https"
             }
         ],
         "x": 950,
         "y": 3360,
-        "wires": [
-            []
-        ]
+        "wires": []
     },
     {
         "id": "771beeafff6064a0",
@@ -8425,7 +8256,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1490,
+        "x": 1170,
         "y": 1660,
         "wires": [
             [
@@ -8460,12 +8291,280 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 1490,
+        "x": 1170,
         "y": 1620,
         "wires": [
             [
                 "8044d101f391a928"
             ]
         ]
+    },
+    {
+        "id": "649d4a1594dbe726",
+        "type": "function",
+        "z": "3af82246.3634ae",
+        "g": "2cac6541d3b7ad29",
+        "name": "Connected",
+        "func": "const ENV_NAMES = [\n    \"MQTT_PUB_BROKER\",\n    \"MQTT_PUB_BROKER_2\",\n    \"MQTT_PUB_BROKER_3\",\n    \"MQTT_PUB_BROKER_4\",\n    \"MQTT_PUB_BROKER_5\"\n];\n\nconst definedCount = ENV_NAMES.filter(name => {\n    const val = env.get(name);\n    return val !== undefined && val !== null && val !== \"\";\n}).length;\n\nvar state = flow.get('brokerState') || {};\nvar id = msg.status.source.id;\nstate[id] = (msg.status.fill === 'green');\nflow.set('brokerState', state);\n\nvar values = Object.values(state);\n\n// true as soon as at least one tracked broker is connected\nvar anyConnected = values.some(function (v) { return v === true; });\nflow.set('anyBrokersConnected', anyConnected);\n\n// true only when every DEFINED broker is connected\nvar allConnected = definedCount > 0\n    && values.length === definedCount\n    && values.every(function (v) { return v === true; });\nflow.set('allBrokersConnected', allConnected);\n\nreturn { payload: allConnected };",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 550,
+        "y": 1100,
+        "wires": [
+            [
+                "03478ca0e9f9fdba"
+            ]
+        ]
+    },
+    {
+        "id": "247d1e7ae4d193df",
+        "type": "status",
+        "z": "3af82246.3634ae",
+        "g": "2cac6541d3b7ad29",
+        "name": "Publisher(s)",
+        "scope": [
+            "affbfac114622266",
+            "adf9f9e953278517",
+            "87d31bf57fc4368a",
+            "6bc1cafe3c62eedd",
+            "3cda36254c15a40a"
+        ],
+        "x": 270,
+        "y": 1100,
+        "wires": [
+            [
+                "4a5f81d539e114f1"
+            ]
+        ]
+    },
+    {
+        "id": "03478ca0e9f9fdba",
+        "type": "switch",
+        "z": "3af82246.3634ae",
+        "g": "2cac6541d3b7ad29",
+        "name": "All ?",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "false"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 690,
+        "y": 1100,
+        "wires": [
+            [
+                "9cc0d1eb57271350"
+            ],
+            [
+                "42025168397e76f0"
+            ]
+        ]
+    },
+    {
+        "id": "9cc0d1eb57271350",
+        "type": "change",
+        "z": "3af82246.3634ae",
+        "g": "2cac6541d3b7ad29",
+        "name": "Prometheus",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{\t   \"op\":\"set\",\t   \"labels\":{\t      \"centre_id\": $flowContext(\"centreid\")\t   },\t   \"val\":0\t}",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 830,
+        "y": 1080,
+        "wires": [
+            [
+                "40065405ae45eebb"
+            ]
+        ]
+    },
+    {
+        "id": "42025168397e76f0",
+        "type": "change",
+        "z": "3af82246.3634ae",
+        "g": "2cac6541d3b7ad29",
+        "name": "Prometheus",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{\t   \"op\":\"set\",\t   \"labels\":{\t      \"centre_id\": $flowContext(\"centreid\")\t   },\t   \"val\":0\t}",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 830,
+        "y": 1120,
+        "wires": [
+            [
+                "40065405ae45eebb"
+            ]
+        ]
+    },
+    {
+        "id": "203ad6e1833349ef",
+        "type": "change",
+        "z": "3af82246.3634ae",
+        "g": "af64ebcc5f745fbb",
+        "name": "Priority",
+        "rules": [
+            {
+                "t": "set",
+                "p": "priority",
+                "pt": "flow",
+                "to": "primary",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 840,
+        "y": 3800,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "35b8b80d5040b0eb",
+        "type": "change",
+        "z": "3af82246.3634ae",
+        "g": "af64ebcc5f745fbb",
+        "name": "Priority",
+        "rules": [
+            {
+                "t": "set",
+                "p": "priority",
+                "pt": "flow",
+                "to": "secondary",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 880,
+        "y": 3980,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "71575ea71946e1f8",
+        "type": "inject",
+        "z": "3af82246.3634ae",
+        "g": "af64ebcc5f745fbb",
+        "name": "Log",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "300",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{ \"host\" : $env(\"WHOAMI\"), \"priority\": $flowContext(\"priority\") }",
+        "payloadType": "jsonata",
+        "x": 270,
+        "y": 4040,
+        "wires": [
+            [
+                "594924c665531883"
+            ]
+        ]
+    },
+    {
+        "id": "594924c665531883",
+        "type": "debug",
+        "z": "3af82246.3634ae",
+        "g": "af64ebcc5f745fbb",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": false,
+        "console": true,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 410,
+        "y": 4040,
+        "wires": []
+    },
+    {
+        "id": "3c354b985b205050",
+        "type": "inject",
+        "z": "3af82246.3634ae",
+        "g": "af64ebcc5f745fbb",
+        "name": "Show ",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{ \"host\" : $env(\"WHOAMI\"), \"priority\": $flowContext(\"priority\") }",
+        "payloadType": "jsonata",
+        "x": 610,
+        "y": 4040,
+        "wires": [
+            [
+                "64965e9acdd0fbc3"
+            ]
+        ]
+    },
+    {
+        "id": "64965e9acdd0fbc3",
+        "type": "debug",
+        "z": "3af82246.3634ae",
+        "g": "af64ebcc5f745fbb",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 740,
+        "y": 4040,
+        "wires": []
     }
 ]
