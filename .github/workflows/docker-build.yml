@@ -4,7 +4,8 @@ on:
   push:
     paths:
       - 'image:tag'
-
+  workflow_call:
+  workflow_dispatch: 
 jobs:
   build-and-push:
     uses: golfvert/WIS2-GlobalCache/.github/workflows/docker-build.yml@main
