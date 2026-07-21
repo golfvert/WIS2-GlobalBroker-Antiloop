@@ -33,6 +33,10 @@ module.exports = {
     functionGlobalContext: {
     },
     exportGlobalContextKeys: false,
+    telemetry: {
+        enabled: false,
+        updateNotification: false
+    },
     logging: {
         console: {
             level: "info",
