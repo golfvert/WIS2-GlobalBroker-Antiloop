@@ -897,7 +897,7 @@
         "g": "2cac6541d3b7ad29",
         "name": "",
         "controlTopic": "control",
-        "defaultState": "open",
+        "defaultState": "queueing",
         "openCmd": "open",
         "closeCmd": "close",
         "toggleCmd": "toggle",
@@ -5981,7 +5981,7 @@
         "g": "2cac6541d3b7ad29",
         "name": "",
         "controlTopic": "control",
-        "defaultState": "open",
+        "defaultState": "queueing",
         "openCmd": "open",
         "closeCmd": "close",
         "toggleCmd": "toggle",
@@ -8366,7 +8366,7 @@
                 "t": "set",
                 "p": "payload",
                 "pt": "msg",
-                "to": "{\t   \"op\":\"set\",\t   \"labels\":{\t      \"centre_id\": $flowContext(\"centreid\")\t   },\t   \"val\":0\t}",
+                "to": "{\t   \"op\":\"set\",\t   \"labels\":{\t      \"centre_id\": $flowContext(\"centreid\")\t   },\t   \"val\":1\t}",
                 "tot": "jsonata"
             }
         ],
@@ -8742,14 +8742,18 @@
                 "t": "cont",
                 "v": "monitor",
                 "vt": "str"
+            },
+            {
+                "t": "else"
             }
         ],
-        "checkall": "true",
+        "checkall": "false",
         "repair": false,
-        "outputs": 1,
+        "outputs": 2,
         "x": 480,
         "y": 3240,
         "wires": [
+            [],
             [
                 "3db0281cd705b3bc"
             ]
