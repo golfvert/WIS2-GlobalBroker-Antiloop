@@ -1,6 +1,6 @@
 {
     "name": "node-red-docker",
-    "version": "5.0.1",
+    "version": "5.0.4",
     "description": "Low-code programming for event-driven applications",
     "homepage": "http://nodered.org",
     "license": "Apache-2.0",
@@ -30,8 +30,7 @@
     ],
     "dependencies": {
         "@golfvert/node-red-redis": "~1.1.0",
-        "node-red": "5.0.1",
-        "node-red-contrib-full-msg-json-schema-validation": "~1.1.0",
+        "node-red": "5.0.4",
         "node-red-contrib-prometheus-exporter": "~1.0.5",
         "node-red-contrib-queue-gate": "~1.5.5"
     },
