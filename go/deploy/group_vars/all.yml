@@ -1,0 +1,19 @@
+---
+# Single source of truth for the remote deploy account and the
+# directories antiloop/Traefik/Prometheus live under on every target
+# host (waloop and collector alike). Loaded automatically by Ansible for
+# every play in this repo (group_vars/all.yml applies fleet-wide).
+#
+# To point this whole deployment at a different account or layout,
+# change ONLY the account (ansible_user, set per-host/group in
+# inventory.ini) — every path below derives from it, so no other file
+# in this repo needs touching. If you ever want a base directory that
+# ISN'T just "/home/<ansible_user>", override deploy_home directly
+# instead (e.g. via group_vars/waloop.yml or --extra-vars).
+# Adapt if it is not /home, but /Users,...
+deploy_home: "/home/{{ ansible_user }}"
+
+antiloop_dir: "{{ deploy_home }}/antiloop"
+traefik_dir: "{{ deploy_home }}/traefik"
+prometheus_dir: "{{ deploy_home }}/prometheus"
+systemd_user_dir: "{{ deploy_home }}/.config/systemd/user"

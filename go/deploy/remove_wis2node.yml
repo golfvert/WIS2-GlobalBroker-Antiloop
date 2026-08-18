@@ -1,0 +1,79 @@
+---
+# Stops and removes one wis2node from wherever it's currently running
+# across the waloop fleet — no restart, nothing redeployed elsewhere.
+# Normally invoked via ./del_wis2node.sh <name>, not run directly.
+#
+# Unlike deploy_antiloop.yml, this runs against ALL 3 hosts for both
+# the stop and the file removal (not just 2 selected ones) — there's
+# no "pick hosts" step here at all, since the whole point is finding
+# and cleaning up wherever it actually is, not choosing somewhere new.
+#
+# No service_scope var here (unlike deploy_antiloop.yml) — this checks
+# and stops BOTH systemd scopes (user and system) on every host,
+# unconditionally. Deletion doesn't need to know which scope it was
+# deployed under; it just needs to find it, wherever it is.
+#
+# Leaves shared/common.env, the binaries under bin/, and the
+# antiloop@.service unit template alone — none of those are specific
+# to this one wis2node, so removing this centre shouldn't touch them.
+
+- hosts: waloop
+  gather_facts: false
+
+  tasks:
+    - name: Require wis2node_name to be set
+      ansible.builtin.assert:
+        that:
+          - wis2node_name is defined
+          - wis2node_name | length > 0
+        fail_msg: >-
+          wis2node_name must be set, e.g.
+          -e wis2node_name=se-smhi — normally you'd run
+          ./del_wis2node.sh se-smhi instead of this playbook directly.
+
+    - name: Set centre_id from wis2node_name
+      ansible.builtin.set_fact:
+        centre_id: "{{ wis2node_name }}"
+
+    # No state= -> query only, doesn't change anything.
+    - name: Query current state of antiloop@{{ wis2node_name }} on this host (both scopes)
+      ansible.builtin.systemd:
+        name: "antiloop@{{ wis2node_name }}"
+        scope: "{{ item }}"
+      become: "{{ item == 'system' }}"
+      loop: ['user', 'system']
+      register: current_state_both
+      failed_when: false
+
+    - name: Stop and disable antiloop@{{ wis2node_name }} here if it's running under either scope (no restart)
+      ansible.builtin.systemd:
+        name: "antiloop@{{ wis2node_name }}"
+        scope: "{{ item.item }}"
+        state: stopped
+        enabled: false
+      become: "{{ item.item == 'system' }}"
+      loop: "{{ current_state_both.results }}"
+      when: >-
+        item.status is defined and
+        item.status.ActiveState | default('') in ['active', 'activating', 'reloading']
+      register: stopped_here
+
+    # Removed on every host regardless of whether it was running here
+    # — cleans up stray copies left behind by earlier deploys/redeploys
+    # too, not just the currently-active pair.
+    - name: Remove centre env file (all hosts)
+      ansible.builtin.file:
+        path: "{{ antiloop_dir }}/wis2node/{{ centre_id }}.env"
+        state: absent
+
+    - name: Remove centre version file (all hosts)
+      ansible.builtin.file:
+        path: "{{ antiloop_dir }}/wis2node/{{ centre_id }}.version"
+        state: absent
+
+    - name: Report this host's involvement
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}:
+          {{ 'was running ' + wis2node_name + ' — stopped and removed' if stopped_here.changed | default(false)
+          else 'not running ' + wis2node_name + ' — files removed if present' }}

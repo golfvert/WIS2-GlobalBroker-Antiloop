@@ -1,0 +1,46 @@
+{# Rendered ONCE by sync-collector.yml, listing every currently active
+   centre_id's router+service in a single file at
+   traefik_dir/dynamic/wis2gb-centres.yml (see group_vars/all.yml).
+   Deliberately one file for ALL centres, looped inside this template
+   with Jinja {% for %} — NOT one file per centre rendered via an
+   Ansible `loop:`. The Ansible-loop version cost one separate module
+   invocation (SSH round trip) per centre; fine for 3, genuinely slow
+   for a couple hundred. A single template render is always exactly
+   one Ansible task regardless of how many centres are active. See
+   sync-collector.yml's own "SCALE NOTE".
+
+   Mirrors the shape antiloop's own internal/traefik.Register() writes
+   on each waloop host, but inverted: TLS terminates HERE (tls: {}),
+   and the backend servers are plain HTTP on :80 on each waloop host
+   (see TRAEFIK_TLS/TRAEFIK_ENTRYPOINT=web in shared/common.env — the
+   two sides of this hop were changed together).
+
+   All 3 waloop hosts are always listed as candidate servers for every
+   centre, regardless of which 2 actually run it right now — the one
+   not running it has no router for /<centre_id> at all on its own
+   Traefik, so it 404s at that host's routing layer and gets marked
+   down by the healthCheck below exactly like a live secondary would.
+   No need to track which 2 hosts per centre anywhere in this file. #}
+http:
+  routers:
+{% for centre_id in active_centres %}
+    {{ centre_id }}:
+      rule: "PathPrefix(`/{{ centre_id }}`)"
+      service: {{ centre_id }}
+      entryPoints:
+        - websecure
+      tls: {}
+{% endfor %}
+  services:
+{% for centre_id in active_centres %}
+    {{ centre_id }}:
+      loadBalancer:
+        healthCheck:
+          path: /{{ centre_id }}/primary
+          interval: "5s"
+          timeout: "2s"
+        servers:
+{% for waloop_host in groups['waloop'] %}
+          - url: "http://{{ hostvars[waloop_host].ansible_host }}:80/{{ centre_id }}"
+{% endfor %}
+{% endfor %}

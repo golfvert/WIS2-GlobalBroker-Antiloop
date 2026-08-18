@@ -1,0 +1,51 @@
+name: Build Go binaries
+
+# Fires when a go-port PR (or any other change under go/) is merged to
+# main — a merge is just a push to main, so no separate "was this PR
+# merged vs just closed" check is needed the way a pull_request-closed
+# trigger would require.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'go/source/**'   # deploy/-only changes (Ansible, systemd templates) don't need a binary rebuild
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go/source
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go/source/go.mod
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        # linux/amd64 to match the waloop fleet — adjust if that ever
+        # changes. No Docker step here on purpose: these binaries are
+        # deployed directly via the antiloop@.service.j2 systemd unit,
+        # not containerized.
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p dist
+          go build -o dist/antiloop ./cmd/antiloop
+          # add further `go build -o dist/<name> ./cmd/<name>` lines here
+          # for any other binaries under cmd/ that should ship too.
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: antiloop-binaries-${{ github.sha }}
+          path: go/source/dist/

@@ -1,0 +1,243 @@
+---
+# Deploys one wis2node (centre_id) to 2 of the 3 waloop hosts, and
+# runs it under systemd. Normally invoked via ./add_wis2node.sh
+# <name> [user|system], not run directly (see that script's own
+# comments for the one-liner it wraps).
+#
+# service_scope switch:
+#   user   (default) - systemd --user, no sudo anywhere, runs as the
+#                       deploy account (ansible_user). Real target for
+#                       actual VM/bare-metal targets.
+#   system            - the system systemd manager, needs sudo
+#                       (become: yes below), runs as root. Exists
+#                       because the current test fleet is 3 LXC
+#                       containers whose host doesn't delegate cgroups
+#                       for logind — `loginctl enable-linger` fails
+#                       there with ENODATA no matter what permissions
+#                       the deploy account has (host/hypervisor-level
+#                       gap, not a guest-level one). The system manager
+#                       doesn't depend on logind sessions/lingering at
+#                       all.
+#
+# REDEPLOY behaviour: re-running this for a name
+# that's already deployed does NOT keep it pinned to the same 2 hosts
+# — every host independently checks its OWN current systemd state for
+# antiloop@<name> and stops+disables it if found running (whether or
+# not that host gets picked again below), then 2 fresh hosts are
+# picked at random. "At random" here means seeded by redeploy_seed
+# (an extra-var ./add_wis2node.sh generates fresh each invocation) rather
+# than by wis2node_name — the seed still has to be identical across
+# all 3 hosts within a SINGLE run (so they agree on the same 2 picks
+# without any cross-host coordination — see the picking tasks below),
+# it just isn't required to be the same between separate runs anymore.
+# Falls back to wis2node_name itself if redeploy_seed isn't passed
+# (e.g. running this playbook directly rather than through the
+# wrapper), which keeps that path deterministic/idempotent same as
+# before.
+#
+# Binary versioning (simplified same day it was introduced): bin/
+# can hold multiple antiloop-<version> binaries at once (see
+# README.md), but there's only ONE "current" version at any given
+# time — shared/antiloop.version, a single global pointer, not a
+# per-centre choice. Every (re)deploy copies THAT file's content to
+# this centre's wis2node/<name>.version on the target (read by the
+# systemd unit itself — see templates/antiloop@.service.j2), so a
+# wis2node picks up whatever was current AT ITS OWN deploy time.
+# Bumping shared/antiloop.version only affects wis2nodes you actually
+# redeploy afterward — anything already running keeps whatever
+# version its own <name>.version says, untouched, until you redeploy
+# it. What's actually running is always checkable via GET /version
+# (or the startup log line) rather than by reading files.
+#
+# Local source layout (this repo, next to this playbook):
+#   shared/common.env              - the one shared env file, templated
+#                                     per host (HOST=...), identical
+#                                     otherwise
+#   shared/antiloop.version         - one line, ANTILOOP_VERSION=<ver>,
+#                                     the single "current version" for
+#                                     new (re)deployments fleet-wide
+#   wis2node/<name>.env             - one file per wis2node
+#   bin/antiloop-<version>           - compiled binaries, one or more
+#   templates/antiloop@.service.j2  - systemd unit template (both scopes)
+#
+# Layout on each target host (all under antiloop_dir — see
+# group_vars/all.yml, "/home/<ansible_user>/antiloop" by default):
+#   wis2node/common.env              - identical (bar HOST=) on all 3
+#   wis2node/<name>.env               - deployed to only 2 of 3 hosts
+#   wis2node/<name>.version           - deployed alongside <name>.env,
+#                                        copied from shared/antiloop.version
+#                                        at deploy time (see above)
+#   bin/antiloop-<version>             - every version, synced to all 3
+# common.env, <name>.env and <name>.version are deliberately all in
+# the SAME directory — antiloop's loadEnvFile reads common.env and
+# <centre_id>.env relative to WorkingDirectory, and
+# bin/run-antiloop.sh (which the systemd unit's ExecStart calls — see
+# templates/antiloop@.service.j2) reads wis2node/%i.version from there
+# too.
+
+- hosts: waloop
+  gather_facts: false
+  vars:
+    service_scope: user
+    redeploy_seed: "{{ wis2node_name | default('') }}"
+
+  tasks:
+    - name: Require wis2node_name to be set
+      ansible.builtin.assert:
+        that:
+          - wis2node_name is defined
+          - wis2node_name | length > 0
+        fail_msg: >-
+          wis2node_name must be set, e.g.
+          -e wis2node_name=se-smhi — normally you'd run
+          ./add_wis2node.sh se-smhi instead of this playbook directly.
+
+    - name: Require service_scope to be user or system
+      ansible.builtin.assert:
+        that:
+          - service_scope in ['user', 'system']
+        fail_msg: "service_scope must be 'user' or 'system', got: {{ service_scope }}"
+
+    - name: Set centre_id and per-centre filenames from wis2node_name
+      ansible.builtin.set_fact:
+        centre_id: "{{ wis2node_name }}"
+        centre_env_file: "{{ wis2node_name }}.env"
+
+    - name: Ensure antiloop directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ antiloop_dir }}/wis2node"
+        - "{{ antiloop_dir }}/bin"
+
+    - name: Ensure systemd --user unit directory exists (user scope only)
+      ansible.builtin.file:
+        path: "{{ systemd_user_dir }}"
+        state: directory
+        mode: '0755'
+      when: service_scope == 'user'
+
+    # template, not copy: shared/common.env is identical across the
+    # fleet except for one line (HOST={{ inventory_hostname }}), which
+    # Ansible fills in per host at deploy time — see shared/common.env's
+    # own doc comment on that line.
+    - name: Deploy common.env (all hosts, HOST filled in per host)
+      ansible.builtin.template:
+        src: shared/common.env
+        dest: "{{ antiloop_dir }}/wis2node/common.env"
+        mode: '0644'
+
+    # Directory copy, not a single file: syncs every antiloop-<version>
+    # currently in local bin/ to every host, without deleting versions
+    # already on the host that happen to be missing locally right now
+    # (copy only adds/updates, never deletes remote-only extras) — see
+    # this file's own "Binary versioning" doc comment above.
+    - name: Deploy all antiloop binary versions (all hosts)
+      ansible.builtin.copy:
+        src: bin/
+        dest: "{{ antiloop_dir }}/bin/"
+        mode: '0755'
+
+    # Templated (not a plain copy) purely so it can pick up antiloop_dir
+    # from group_vars/all.yml — the actual version-resolution logic is
+    # still plain runtime shell (reads wis2node/%i.version itself; see
+    # the script's own doc comment for why this exists instead of
+    # EnvironmentFile= + ${VAR} substitution in ExecStart).
+    - name: Deploy run-antiloop.sh wrapper (all hosts)
+      ansible.builtin.template:
+        src: templates/run-antiloop.sh
+        dest: "{{ antiloop_dir }}/bin/run-antiloop.sh"
+        mode: '0755'
+
+    - name: Deploy antiloop systemd unit (all hosts)
+      ansible.builtin.template:
+        src: templates/antiloop@.service.j2
+        dest: >-
+          {{ '/etc/systemd/system/antiloop@.service' if service_scope == 'system'
+          else systemd_user_dir + '/antiloop@.service' }}
+        mode: '0644'
+      become: "{{ service_scope == 'system' }}"
+      register: unit_deployed
+
+    # Checks BOTH scopes, not just this run's requested service_scope
+    # (added after a live mix-up: a wis2node deployed under
+    # "user" and then redeployed under "system" left the old "user"
+    # unit orphaned and endlessly restart-failing, since the original
+    # version of this task only ever looked at the scope being
+    # requested THIS run). A wis2node can only actually be running
+    # under one scope at a time in practice, but checking both costs
+    # nothing and means switching scopes between redeploys can't leave
+    # a stale instance behind under the scope you're moving away from.
+    # No state= -> query only, doesn't change anything. Every host
+    # checks ITS OWN current state independently; no cross-host
+    # coordination needed for this part.
+    - name: Query current state of antiloop@{{ wis2node_name }} on this host (both scopes)
+      ansible.builtin.systemd:
+        name: "antiloop@{{ wis2node_name }}"
+        scope: "{{ item }}"
+      become: "{{ item == 'system' }}"
+      loop: ['user', 'system']
+      register: current_state_both
+      failed_when: false
+
+    - name: Stop antiloop@{{ wis2node_name }} here if it's running under either scope
+      ansible.builtin.systemd:
+        name: "antiloop@{{ wis2node_name }}"
+        scope: "{{ item.item }}"
+        state: stopped
+        enabled: false
+      become: "{{ item.item == 'system' }}"
+      loop: "{{ current_state_both.results }}"
+      when: >-
+        item.status is defined and
+        item.status.ActiveState | default('') in ['active', 'activating', 'reloading']
+
+    # Random-but-consistent 2-of-3 selection: every host computes this
+    # identically and independently (pure function of groups['waloop']
+    # + redeploy_seed), so no cross-host fact sharing is needed. Seeded
+    # by redeploy_seed rather than wis2node_name — see this file's
+    # "REDEPLOY behaviour" doc comment for why.
+    - name: Pick first host for this wis2node (seeded by redeploy_seed)
+      ansible.builtin.set_fact:
+        centre_first_pick: "{{ groups['waloop'] | random(seed=redeploy_seed + '-pick1') }}"
+
+    - name: Pick second host for this wis2node (seeded by redeploy_seed, excludes the first pick)
+      ansible.builtin.set_fact:
+        centre_second_pick: "{{ (groups['waloop'] | difference([centre_first_pick])) | random(seed=redeploy_seed + '-pick2') }}"
+
+    - name: Deploy centre env file (only to the 2 selected hosts)
+      ansible.builtin.copy:
+        src: "wis2node/{{ centre_env_file }}"
+        dest: "{{ antiloop_dir }}/wis2node/{{ centre_id }}.env"
+        mode: '0644'
+      when: inventory_hostname in [centre_first_pick, centre_second_pick]
+
+    # Source is the ONE global shared/antiloop.version, not a per-centre
+    # file — see this playbook's "Binary versioning" doc comment above.
+    # Whatever version is "current" right now gets baked into THIS
+    # centre's <name>.version at THIS deploy; bumping the global file
+    # later doesn't retroactively touch it.
+    - name: Deploy centre version file from the current global version (only to the 2 selected hosts)
+      ansible.builtin.copy:
+        src: shared/antiloop.version
+        dest: "{{ antiloop_dir }}/wis2node/{{ centre_id }}.version"
+        mode: '0644'
+      when: inventory_hostname in [centre_first_pick, centre_second_pick]
+
+    - name: Enable and start antiloop@{{ wis2node_name }} (only on the 2 selected hosts)
+      ansible.builtin.systemd:
+        name: "antiloop@{{ wis2node_name }}"
+        scope: "{{ service_scope }}"
+        state: started
+        enabled: true
+        daemon_reload: "{{ unit_deployed.changed }}"
+      become: "{{ service_scope == 'system' }}"
+      when: inventory_hostname in [centre_first_pick, centre_second_pick]
+
+    - name: Report this host's role for this wis2node
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}:
+          {{ ('RUNS ' + wis2node_name + ' (' + service_scope + ' scope)') if inventory_hostname in [centre_first_pick, centre_second_pick] else 'not selected for ' + wis2node_name }}

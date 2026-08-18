@@ -1,0 +1,18 @@
+{# Prometheus file_sd targets file, rendered onto the collector host by
+   sync-collector.yml. One entry per currently-active centre_id — the
+   target address never changes (always the collector's own Traefik,
+   over the shared docker network by container name), only the file's
+   membership changes, and only on add_wis2node.sh/del_wis2node.sh, not
+   on failover (Traefik's healthCheck handles which waloop host answers
+   for a given centre — see templates/traefik-centres.yml.j2). #}
+[
+{% for centre_id in active_centres %}
+  {
+    "targets": ["traefik:443"],
+    "labels": {
+      "__metrics_path__": "/{{ centre_id }}/metrics",
+      "centre_id": "{{ centre_id }}"
+    }
+  }{{ "," if not loop.last else "" }}
+{% endfor %}
+]
