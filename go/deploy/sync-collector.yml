@@ -1,0 +1,115 @@
+---
+# Regenerates the collector's Traefik dynamic config and Prometheus
+# file_sd targets file from whatever wis2nodes are ACTUALLY deployed
+# right now, across all 3 waloop hosts — not from any separately
+# maintained list. Source of truth: presence of
+# antiloop_dir/wis2node/<centre_id>.env (see group_vars/all.yml) on a
+# waloop host is exactly what deploy_antiloop.yml writes (to 2 of the
+# 3 hosts) and remove_wis2node.yml removes (from all 3) — so scanning
+# for *.env (excluding common.env) across all 3 hosts and taking the
+# union gives the current active centre list, with no separate state
+# file that could ever drift from reality.
+#
+# See docs/architecture.md for how the collector host fits into the
+# overall routing/metrics picture (two-tier Traefik + Prometheus).
+#
+# Kept in sync deliberately, not just eventually: instances that are
+# no longer deployed must not linger here, so this is run
+# automatically at the end of both add_wis2node.sh and del_wis2node.sh
+# — a one-shot regeneration triggered by a deploy/teardown event, not
+# a poller (an earlier "custom polling tool on a systemd timer" idea
+# was explicitly rejected — this only ever runs when membership
+# genuinely changes).
+#
+# Idempotent full regeneration, not incremental patching: every run
+# recomputes the whole active-centre list and rewrites both the
+# Prometheus targets file and the Traefik dynamic config from scratch.
+# A run after del_wis2node.sh therefore drops that centre everywhere
+# with no separate "remove" step anywhere in this file.
+#
+# SCALE NOTE: both rendered files are ONE ansible.builtin.template
+# task each, regardless of how many centres are active — the loop
+# over active_centres happens inside the Jinja templates themselves
+# (templates/traefik-centres.yml.j2, templates/wis2gb_targets.json.j2),
+# not as an Ansible `loop:`. An earlier version rendered one Traefik
+# file PER centre via an Ansible loop, which meant one separate
+# module invocation (SSH round trip) per centre — fine at 3 centres,
+# genuinely slow at fleet scale (a couple hundred centres could mean
+# minutes of serialized round trips on every single add/del). Keeping
+# the loop inside Jinja instead means this playbook costs the same
+# handful of tasks whether 3 centres are active or 300.
+#
+# Can also be run standalone (`ansible-playbook -i inventory.ini
+# sync-collector.yml`) any time you want the collector's config to
+# match reality right now, without deploying or deleting anything.
+
+- hosts: waloop
+  gather_facts: false
+  tasks:
+    - name: Find this host's deployed centre env files
+      ansible.builtin.find:
+        paths: "{{ antiloop_dir }}/wis2node"
+        patterns: "*.env"
+        excludes: "common.env"
+      register: found_env_files
+
+    - name: Extract centre_ids from this host's deployed env files
+      ansible.builtin.set_fact:
+        local_centre_ids: >-
+          {{ found_env_files.files
+             | map(attribute='path') | map('basename')
+             | map('regex_replace', '\.env$', '') | list }}
+
+- hosts: collector
+  gather_facts: false
+  vars:
+    # Union across all 3 waloop hosts' local_centre_ids (set above),
+    # deduped and sorted for a stable diff/output every run — find's
+    # own ordering is filesystem-dependent per host and would otherwise
+    # make this file churn on every run even with no real change.
+    active_centres: >-
+      {{ groups['waloop']
+         | map('extract', hostvars, 'local_centre_ids')
+         | sum(start=[]) | unique | sort }}
+    # CHECK THIS: wherever Prometheus's own compose actually mounts its
+    # config from on the collector host — this default assumes the
+    # same deploy_home/<tool>/... convention as Traefik (see
+    # group_vars/all.yml's prometheus_dir), but hasn't been confirmed
+    # against the real Prometheus deployment there yet.
+    prometheus_targets_dir: "{{ prometheus_dir }}"
+
+  tasks:
+    - name: Ensure collector Traefik dynamic dir exists
+      ansible.builtin.file:
+        path: "{{ traefik_dir }}/dynamic"
+        state: directory
+        mode: '0755'
+
+    - name: Ensure prometheus_targets_dir exists
+      ansible.builtin.file:
+        path: "{{ prometheus_targets_dir }}"
+        state: directory
+        mode: '0755'
+
+    # MIGRATION NOTE: if this host still has per-centre files from
+    # before aggregation (one <centre_id>.yml each, from an older
+    # version of this playbook), remove them by hand once — they're no
+    # longer written or cleaned up by this playbook, only
+    # wis2gb-centres.yml is.
+    - name: Render aggregate Traefik dynamic config (all active centres, one file)
+      ansible.builtin.template:
+        src: templates/traefik-centres.yml.j2
+        dest: "{{ traefik_dir }}/dynamic/wis2gb-centres.yml"
+        mode: '0644'
+
+    - name: Render Prometheus file_sd targets file (active centres only)
+      ansible.builtin.template:
+        src: templates/wis2gb_targets.json.j2
+        dest: "{{ prometheus_targets_dir }}/wis2gb_targets.json"
+        mode: '0644'
+
+    - name: Report active centre count
+      ansible.builtin.debug:
+        msg: >-
+          collector now tracks {{ active_centres | length }} active
+          centre(s): {{ active_centres | join(', ') }}
