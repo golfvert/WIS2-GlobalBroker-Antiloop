@@ -96,8 +96,7 @@ jobs:
             Create a branch named go-port/<the new image:tag value>,
             commit your changes, push it, and open the PR yourself with
             `gh pr create`.
-          claude_args: '--allowedTools "Read,Edit,Grep,Glob,Bash(git *),Bash(gh pr create*)" --max-turns 40'
-
+          claude_args: '--allowedTools "Read,Write,Edit,Grep,Glob,Bash(git *),Bash(gh pr create*)" --max-turns 40'
       - name: Notify Slack
         if: always()
         uses: slackapi/slack-github-action@v2
