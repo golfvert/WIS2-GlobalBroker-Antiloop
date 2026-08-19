@@ -3531,7 +3531,7 @@
         "props": [
             {
                 "p": "topic",
-                "v": "[ \"uuid_\" & $flowContext(\"uuid\") ]",
+                "v": "[ \"wis2gb:uuid_\" & $flowContext(\"uuid\") ]",
                 "vt": "jsonata"
             }
         ],
