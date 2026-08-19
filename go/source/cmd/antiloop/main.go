@@ -69,8 +69,13 @@ func main() {
 		"useful when tuning DEDUP_BATCH_SIZE/DEDUP_BATCH_WAIT, just noise otherwise), "+
 		"paho (paho.mqtt.golang's own internal per-packet trace — very chatty), "+
 		"all (every category above)")
+	flag.Var(&dbg.topicStatic, "t", "MQTT topic filter to further narrow the subscriber/publisher debug categories to, "+
+		"comma-separated and/or repeatable (-t a/b/c -t x/y/z): standard MQTT wildcard semantics, "+
+		"'+' matches exactly one level, '#' (only valid as the last level) matches that level and everything after it. "+
+		"Has no effect on any other -d category. Not given: subscriber/publisher log every topic, same as before. "+
+		"Also live-adjustable via <centre_id>.debug 'topic:<filter>' lines, same mechanism as -d's categories.")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: %s [-d category[,category...]] <centre_id>\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "usage: %s [-d category[,category...]] [-t topic-filter] <centre_id>\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Reads ./common.env then ./<centre_id>.env from the current directory\nand loads them into the process environment itself — no need to\n`source` them first.\n\n")
 		flag.PrintDefaults()
 	}
@@ -354,6 +359,7 @@ func main() {
 		QoS:            cfg.MQTTPubQoS,
 	}
 	pipeline.Debug = dbg.has // "checks" and "publisher" categories — see pipeline.debugf
+	pipeline.TopicMatch = dbg.topicMatch // narrows "publisher" logging only — see pipeline.debugfTopic
 
 	// Establish the initial pub-connectivity state explicitly — the
 	// publisher's onState closure (above) only fires on a future
@@ -533,12 +539,14 @@ func main() {
 		cfg.MQTTSubTopics,
 		cfg.MQTTSubQoS, // MQTT_SUB_QOS, default 0 — see config.Config doc comment
 		func(_ mqtt.Client, msg mqtt.Message) {
-			if dbg.has("subscriber") {
+			if dbg.has("subscriber") && dbg.topicMatch(msg.Topic()) {
 				// -d subscriber: raw, as received, before any check/dedup/
 				// gate logic touches it — this is "what did the broker
 				// actually send", not "what did antiloop do with it".
 				// Payload is capped so one oversized message can't flood
-				// the terminal/journal.
+				// the terminal/journal. dbg.topicMatch is a no-op (always
+				// true) unless -t was given or a "topic:" line is active
+				// in <centre_id>.debug — see its doc comment.
 				log.Printf("[%s] recv topic=%q payload=%s", cfg.CentreID, msg.Topic(), truncate(msg.Payload(), debugPayloadLogLimit))
 			}
 			pipeline.HandleMessage(msg.Topic(), msg.Payload())
@@ -667,9 +675,20 @@ func boolToFloat(b bool) float64 {
 // file, only ones the file itself turned on can be turned back off by
 // it. That's the literal "enable/disable based on the file's content"
 // behavior, scoped to what the file controls.
+//
+// The same file also carries -t's topic filters, one per line
+// prefixed "topic:" (e.g. "topic:+/a/wis2/se-smhi/+/data#") so they
+// can be narrowed/widened live too, without a restart — topicStatic/
+// topicDynamic mirror static/dynamic exactly, just for filter strings
+// instead of category keywords; see topicMatch. Distinct field pair
+// (not folded into the same map) since a topic filter isn't a
+// keyword with an on/off state, it's a string to be matched against.
 type debugFlag struct {
 	static  map[string]bool
 	dynamic atomic.Pointer[map[string]bool]
+
+	topicStatic  topicFilterFlag
+	topicDynamic atomic.Pointer[topicFilterFlag]
 }
 
 func (d *debugFlag) String() string {
@@ -712,6 +731,25 @@ func (d *debugFlag) has(category string) bool {
 	return false
 }
 
+// topicMatch reports whether topic matches -t's effective filter set
+// right now — topicStatic (set at startup) UNION whatever topicDynamic
+// currently holds (the debug file's "topic:" lines, live-reloadable
+// the same way categories are). Matches everything (returns true) when
+// that combined set is empty, same "no filters = no narrowing"
+// default topicFilterFlag.match itself already implements — this just
+// combines the static and dynamic halves before delegating to it.
+func (d *debugFlag) topicMatch(topic string) bool {
+	if d == nil {
+		return true
+	}
+	combined := make(topicFilterFlag, 0, len(d.topicStatic))
+	combined = append(combined, d.topicStatic...)
+	if dyn := d.topicDynamic.Load(); dyn != nil {
+		combined = append(combined, (*dyn)...)
+	}
+	return combined.match(topic)
+}
+
 // watchFile reads path once immediately, then every interval, until
 // ctx is canceled — see the debugFlag doc comment for the semantics.
 // centreID is only used to prefix log lines consistently with the
@@ -732,13 +770,18 @@ func (d *debugFlag) watchFile(ctx context.Context, centreID, path string, interv
 
 // reloadFile reads path (one category keyword per line; blank lines
 // and "#"-prefixed lines ignored, same conventions as loadEnvFile) and
-// atomically replaces the dynamic set. A missing or unreadable file is
-// not an error — it just means no dynamic categories are active, the
+// atomically replaces the dynamic set. A line prefixed "topic:" is a
+// topic filter instead of a category keyword — e.g.
+// "topic:+/a/wis2/se-smhi/+/data#" — and goes into topicDynamic
+// instead, following the exact same replace-wholesale-on-every-read
+// semantics. A missing or unreadable file is not an error — it just
+// means no dynamic categories or topic filters are active, the
 // normal/expected state when nobody's asked for runtime debug control.
 // Only logs when the effective dynamic set actually changes, not on
 // every 10s tick, so this doesn't itself become log noise.
 func (d *debugFlag) reloadFile(centreID, path string) {
 	next := map[string]bool{}
+	nextTopics := topicFilterFlag{}
 	f, err := os.Open(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -750,6 +793,12 @@ func (d *debugFlag) reloadFile(centreID, path string) {
 		for sc.Scan() {
 			line := strings.TrimSpace(sc.Text())
 			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			if filter, ok := strings.CutPrefix(line, "topic:"); ok {
+				if filter = strings.TrimSpace(filter); filter != "" {
+					nextTopics = append(nextTopics, filter)
+				}
 				continue
 			}
 			next[line] = true
@@ -771,6 +820,19 @@ func (d *debugFlag) reloadFile(centreID, path string) {
 		}
 	}
 	d.dynamic.Store(&next)
+
+	var prevTopics topicFilterFlag
+	if p := d.topicDynamic.Load(); p != nil {
+		prevTopics = *p
+	}
+	if !topicFiltersEqual(prevTopics, nextTopics) {
+		if len(nextTopics) == 0 {
+			log.Printf("[%s] debug file %s: no dynamic topic filters active", centreID, path)
+		} else {
+			log.Printf("[%s] debug file %s -> dynamic topic filters: %s", centreID, path, strings.Join(nextTopics, ","))
+		}
+	}
+	d.topicDynamic.Store(&nextTopics)
 }
 
 func debugSetsEqual(a, b map[string]bool) bool {
@@ -785,6 +847,22 @@ func debugSetsEqual(a, b map[string]bool) bool {
 	return true
 }
 
+// topicFiltersEqual compares two topicFilterFlag slices by content and
+// order — order-sensitive is fine here since both sides come from the
+// same source (a re-read of the same file) rather than independently
+// built sets, so a real content change is what actually reorders them.
+func topicFiltersEqual(a, b topicFilterFlag) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func sortedKeys(m map[string]bool) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
@@ -792,6 +870,70 @@ func sortedKeys(m map[string]bool) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// topicFilterFlag is -t's value: zero or more MQTT topic filters,
+// buildable the same way -d is (repeated flags and/or comma-separated,
+// both mixed). Purely additive narrowing on top of the "subscriber"/
+// "publisher" debug categories — see match. Used both as debugFlag's
+// topicStatic field (the -t flag itself, fixed at startup) and as the
+// type of topicDynamic's pointee (the live, file-reloadable half) —
+// see debugFlag's doc comment for how those two combine.
+type topicFilterFlag []string
+
+func (t *topicFilterFlag) String() string {
+	return strings.Join(*t, ",")
+}
+
+func (t *topicFilterFlag) Set(value string) error {
+	for _, part := range strings.Split(value, ",") {
+		if part = strings.TrimSpace(part); part != "" {
+			*t = append(*t, part)
+		}
+	}
+	return nil
+}
+
+// match reports whether topic matches at least one of the configured
+// filters (multiple -t values are OR'd together, same as subscribing
+// to several MQTT topic filters at once). No filters given at all
+// means "match everything" — -t is opt-in narrowing, never a
+// requirement, so subscriber/publisher logging behaves exactly as
+// before when it's not used.
+func (t topicFilterFlag) match(topic string) bool {
+	if len(t) == 0 {
+		return true
+	}
+	for _, filter := range t {
+		if mqttTopicMatch(filter, topic) {
+			return true
+		}
+	}
+	return false
+}
+
+// mqttTopicMatch reports whether topic matches the single MQTT filter,
+// per the standard wildcard rules: '+' matches exactly one topic
+// level; '#' matches its own level and every level after it, and is
+// only valid as the filter's last level (a '#' anywhere else is
+// treated as a literal level, same as an MQTT broker would reject it
+// as malformed rather than silently special-case it — this is a
+// debug-only convenience, not a broker, so it just won't match).
+func mqttTopicMatch(filter, topic string) bool {
+	filterLevels := strings.Split(filter, "/")
+	topicLevels := strings.Split(topic, "/")
+	for i, fl := range filterLevels {
+		if fl == "#" && i == len(filterLevels)-1 {
+			return true
+		}
+		if i >= len(topicLevels) {
+			return false
+		}
+		if fl != "+" && fl != topicLevels[i] {
+			return false
+		}
+	}
+	return len(filterLevels) == len(topicLevels)
 }
 
 // debugPayloadLogLimit caps how much of a message payload gets written

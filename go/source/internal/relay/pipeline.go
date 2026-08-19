@@ -145,6 +145,15 @@ type Pipeline struct {
 	// to know anything about how -d is parsed.
 	Debug func(category string) bool
 
+	// TopicMatch, if set, further narrows "publisher" debug logging
+	// (see debugfTopic) to only topics of interest — wired from
+	// cmd/antiloop/main.go's -t flag(s) (topicFilterFlag.match). nil
+	// means "match everything", same as -t never having been given, so
+	// this is purely opt-in on top of Debug. Deliberately not consulted
+	// by the plain debugf/"checks" path — -t only ever narrows
+	// subscriber/publisher, per its own doc comment.
+	TopicMatch func(topic string) bool
+
 	// timing backs the "timing" debug category — see pipelineTiming's
 	// doc comment. processedCount drives its every-100 log cadence,
 	// same pattern as publishCount/"pubcount" but counting every
@@ -448,11 +457,11 @@ func (p *Pipeline) process(m Msg) {
 	p.timing.publish.record(time.Since(t0))
 	switch {
 	case errors.Is(err, mqttbroker.ErrQueued):
-		p.debugf("publisher", "publish topic=%q: no pub broker connected, queued for later delivery", topic)
+		p.debugfTopic("publisher", topic, "publish topic=%q: no pub broker connected, queued for later delivery", topic)
 	case err != nil:
 		log.Printf("[%s] publish error (delivered to %d brokers): %v", p.CentreID, delivered, err)
 	}
-	p.debugf("publisher", "publish topic=%q delivered=%d payload=%s", topic, delivered, truncate(payload, debugPayloadLogLimit))
+	p.debugfTopic("publisher", topic, "publish topic=%q delivered=%d payload=%s", topic, delivered, truncate(payload, debugPayloadLogLimit))
 	if delivered > 0 {
 		p.Metrics.MessagesPublished.Inc()
 		// "pubcount": a running total every publishCountLogInterval
@@ -488,6 +497,22 @@ func (p *Pipeline) logTimingSummary(n uint64) {
 // Debug itself is nil (no -d categories requested at all).
 func (p *Pipeline) debugf(category, format string, args ...interface{}) {
 	if p.Debug == nil || !p.Debug(category) {
+		return
+	}
+	log.Printf("[%s] "+format, append([]interface{}{p.CentreID}, args...)...)
+}
+
+// debugfTopic is debugf plus one extra gate: TopicMatch, if set, must
+// also match topic — this is what lets -t narrow "publisher" logging
+// down to a subset of topics instead of every message. Used only at
+// the publisher log sites; every other category (checks, dedup,
+// timing, pubcount) goes through plain debugf and ignores -t entirely,
+// per TopicMatch's own doc comment on the Pipeline struct.
+func (p *Pipeline) debugfTopic(category, topic, format string, args ...interface{}) {
+	if p.Debug == nil || !p.Debug(category) {
+		return
+	}
+	if p.TopicMatch != nil && !p.TopicMatch(topic) {
 		return
 	}
 	log.Printf("[%s] "+format, append([]interface{}{p.CentreID}, args...)...)
