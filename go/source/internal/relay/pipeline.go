@@ -461,7 +461,12 @@ func (p *Pipeline) process(m Msg) {
 	case err != nil:
 		log.Printf("[%s] publish error (delivered to %d brokers): %v", p.CentreID, delivered, err)
 	}
-	p.debugfTopic("publisher", topic, "publish topic=%q delivered=%d payload=%s", topic, delivered, truncate(payload, debugPayloadLogLimit))
+	// %q, not %s: WNM payloads are sometimes pretty-printed JSON with
+	// real embedded newlines, and journald splits a service's stdout on
+	// every '\n' it sees — %q escapes them to literal \n text so one
+	// log call stays one journal line (see main.go's matching "recv"
+	// debug line for the fuller explanation).
+	p.debugfTopic("publisher", topic, "publish topic=%q delivered=%d payload=%q", topic, delivered, truncate(payload, debugPayloadLogLimit))
 	if delivered > 0 {
 		p.Metrics.MessagesPublished.Inc()
 		// "pubcount": a running total every publishCountLogInterval

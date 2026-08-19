@@ -544,10 +544,18 @@ func main() {
 				// gate logic touches it — this is "what did the broker
 				// actually send", not "what did antiloop do with it".
 				// Payload is capped so one oversized message can't flood
-				// the terminal/journal. dbg.topicMatch is a no-op (always
-				// true) unless -t was given or a "topic:" line is active
-				// in <centre_id>.debug — see its doc comment.
-				log.Printf("[%s] recv topic=%q payload=%s", cfg.CentreID, msg.Topic(), truncate(msg.Payload(), debugPayloadLogLimit))
+				// the terminal/journal. %q, not %s: WNM payloads are
+				// sometimes pretty-printed JSON with real embedded
+				// newlines, and journald splits a service's stdout on
+				// every '\n' it sees — one Printf with embedded newlines
+				// becomes several separate journal entries otherwise,
+				// each stamped with the same timestamp/pid, which reads
+				// as if the message were torn apart. %q escapes them to
+				// literal \n text so one log call is one journal line.
+				// dbg.topicMatch is a no-op (always true) unless -t was
+				// given or a "topic:" line is active in <centre_id>.debug
+				// — see its doc comment.
+				log.Printf("[%s] recv topic=%q payload=%q", cfg.CentreID, msg.Topic(), truncate(msg.Payload(), debugPayloadLogLimit))
 			}
 			pipeline.HandleMessage(msg.Topic(), msg.Payload())
 		},
