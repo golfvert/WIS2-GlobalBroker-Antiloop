@@ -11,6 +11,13 @@ on:
       - 'go/source/**'   # deploy/-only changes (Ansible, systemd templates) don't need a binary rebuild
   workflow_dispatch:
 
+# contents: write is what lets the release step below create/update a
+# GitHub Release — the default GITHUB_TOKEN is otherwise read-only on
+# a repo that hasn't opted into "read and write" workflow permissions
+# at the repo/org level, and this shouldn't depend on that being set.
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -29,18 +36,43 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      # go/source/antiloop.version is the same plain-tag file
+      # build.sh reads locally (see that script's own doc comment) —
+      # one line, no KEY=VALUE, e.g. "1.0.0-rc7". This is NOT the same
+      # file as the deploy repos' shared/antiloop.version (that one is
+      # KEY=VALUE and tracks what's currently PROMOTED to the fleet,
+      # a separate, deliberate, later step — see deploy_antiloop.yml's
+      # "Binary versioning" doc comment). This step just says what tag
+      # THIS build is.
+      - name: Read antiloop.version
+        id: version
+        run: |
+          tag="$(tr -d '[:space:]' < antiloop.version)"
+          if [ -z "$tag" ]; then
+            echo "::error::antiloop.version is empty"
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Build
         # linux/amd64 to match the waloop fleet — adjust if that ever
         # changes. No Docker step here on purpose: these binaries are
         # deployed directly via the antiloop@.service.j2 systemd unit,
-        # not containerized.
+        # not containerized. Output filename and -X main.Version both
+        # match build.sh's own local convention exactly
+        # (antiloop-<tag>, embedded Version=<tag>) — deploy_antiloop.yml
+        # / update_wis2node.yml expect bin/antiloop-<tag> verbatim
+        # (see templates/run-antiloop.sh), and the release asset
+        # uploaded below reuses this same filename so fetching it
+        # needs no renaming on the Ansible side either.
         env:
           GOOS: linux
           GOARCH: amd64
           CGO_ENABLED: 0
         run: |
           mkdir -p dist
-          go build -o dist/antiloop ./cmd/antiloop
+          go build -ldflags "-X main.Version=${{ steps.version.outputs.tag }}" \
+            -o "dist/antiloop-${{ steps.version.outputs.tag }}" ./cmd/antiloop
           # add further `go build -o dist/<name> ./cmd/<name>` lines here
           # for any other binaries under cmd/ that should ship too.
 
@@ -49,3 +81,36 @@ jobs:
         with:
           name: antiloop-binaries-${{ github.sha }}
           path: go/source/dist/
+
+      # This is the actual durable, fetchable distribution point — the
+      # upload-artifact step above only keeps this build for 90 days
+      # and requires GitHub API auth to download, neither of which fit
+      # "an Ansible playbook on a production host grabs the binary for
+      # a specific version, any time later, with a plain curl." Release
+      # assets on a public repo are permanent (until deleted) and
+      # downloadable over plain HTTPS, no token needed — see
+      # go/deploy/fetch_antiloop_binary.sh in the deploy repos for the
+      # matching download side of this.
+      #
+      # Tag is "antiloop-<tag>", not just "<tag>" — antiloop.version's
+      # content has no fixed format (could collide with an unrelated
+      # git tag or the Node-RED flow's own image:tag scheme otherwise).
+      # Re-running this workflow for a tag that already has a release
+      # (e.g. workflow_dispatch replay) updates that release's asset
+      # in place (--clobber) instead of failing on "already exists."
+      - name: Create or update GitHub release for this version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: antiloop-${{ steps.version.outputs.tag }}
+          ASSET_PATH: dist/antiloop-${{ steps.version.outputs.tag }}
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "release $RELEASE_TAG already exists — replacing its asset"
+            gh release upload "$RELEASE_TAG" "$ASSET_PATH" --repo "${{ github.repository }}" --clobber
+          else
+            gh release create "$RELEASE_TAG" "$ASSET_PATH" \
+              --repo "${{ github.repository }}" \
+              --target "${{ github.sha }}" \
+              --title "antiloop ${{ steps.version.outputs.tag }}" \
+              --notes "Automated build of go/source at ${{ github.sha }}. Building this does NOT promote it to the fleet — that's still a separate, deliberate step (shared/antiloop.version in the deploy repos). See go/deploy/fetch_antiloop_binary.sh for how deploy playbooks pull this asset down."
+          fi
