@@ -1,0 +1,109 @@
+name: Port flows.json changes to Go
+
+# Same trigger as docker-build.yml — a bump to image:tag is this repo's
+# signal for "a new release of the reference implementation just
+# happened." Reusing it (rather than triggering on every flows.json
+# commit) keeps the Go port aligned to actual releases, not every
+# in-progress edit.
+on:
+  push:
+    paths:
+      - 'image:tag'
+  workflow_dispatch:   # for testing this workflow on its own before trusting the real trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+jobs:
+  port-to-go:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0   # full history — needed to find the previous release commit
+
+      - name: Find previous release point and build diff context
+        id: diff
+        run: |
+          prev_sha=$(git log --skip=1 -n 1 --format=%H -- image:tag || true)
+          if [ -z "$prev_sha" ]; then
+            echo "No earlier image:tag commit found (first release) — diffing against the repo root."
+            prev_sha=$(git rev-list --max-parents=0 HEAD)
+          fi
+          {
+            echo "Previous release commit: $prev_sha"
+            echo "Current release commit:  $(git rev-parse HEAD)"
+            echo
+            echo "### image:tag"
+            git diff "$prev_sha"..HEAD -- image:tag
+            echo
+            echo "### flows.json"
+            git diff "$prev_sha"..HEAD -- flows.json
+            echo
+            echo "### settings.js"
+            git diff "$prev_sha"..HEAD -- settings.js
+            echo
+            echo "### wis2-notification-message.json"
+            git diff "$prev_sha"..HEAD -- wis2-notification-message.json
+            echo
+            echo "### package.json"
+            git diff "$prev_sha"..HEAD -- package.json
+          } > /tmp/reference-diff.txt
+          echo "Diff written to /tmp/reference-diff.txt ($(wc -l < /tmp/reference-diff.txt) lines)"
+
+      - name: Port changes with Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            This repo's image:tag file was just bumped, marking a new
+            release of the Node-RED reference implementation (flows.json,
+            settings.js, wis2-notification-message.json, package.json).
+            Read the current image:tag file yourself for the new version
+            string, and read /tmp/reference-diff.txt for exactly what
+            changed since the previous release.
+
+            This repo also contains a Go reimplementation of the same
+            relay under go/source/ (go/source/cmd/, go/source/internal/).
+            go/deploy/ holds Ansible deployment tooling for that Go
+            binary — leave it alone unless the diff specifically implies
+            a new/changed env var or config shape that deploy/ templates
+            would need to know about too. Your job: understand what
+            functional change the diff represents, and make the
+            equivalent change in the Go code under go/source/.
+
+            Rules:
+            - Do NOT modify flows.json, settings.js, wis2-notification-message.json,
+              or package.json — those are the reference, read-only from here.
+            - Do NOT build or containerize the Go binary — that happens in a
+              separate workflow, after human review of your PR.
+            - If a change has no Go-side equivalent (e.g. Node-RED-specific
+              plumbing), say so explicitly in the PR description rather than
+              guessing at a port.
+            - If you're not confident a change was ported correctly, flag
+              that in the PR description too instead of silently proceeding
+              — this is a production WIS2 relay.
+            - Always open a pull request against main, even if your
+              conclusion is "no Go changes needed this release" — in that
+              case open a PR that only notes the review in go/CHANGELOG.md,
+              don't skip the PR silently.
+
+            Create a branch named go-port/<the new image:tag value>,
+            commit your changes, push it, and open the PR yourself with
+            `gh pr create`.
+          claude_args: '--allowedTools "Read,Write,Edit,Grep,Glob,Bash(git *),Bash(gh pr create*)" --max-turns 40'
+      - name: Notify Slack
+        if: always()
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "Go port run for a new image:tag release: ${{ job.status }}. Check pull requests: ${{ github.server_url }}/${{ github.repository }}/pulls"
+            }

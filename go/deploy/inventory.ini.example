@@ -1,0 +1,39 @@
+# The three physical hosts a given centre_id's two competing instances
+# get spread across for redundancy — see antiloop's own doc comments
+# (config.Config's Host field, relay.Pipeline's worker-pool history)
+# for the "2 of 3 hosts per centre" deployment model this inventory
+# supports.
+#
+# This is a template: copy it to inventory.ini (gitignored) and fill
+# in your own hosts/IPs/user. inventory.ini itself is never committed
+# since it exposes real internal network addresses.
+#
+# ansible_user is the ONE place the deploy account is set — every
+# remote path (antiloop_dir, traefik_dir, etc.) derives from it in
+# group_vars/all.yml, so changing the account here is enough; no
+# playbook or template needs touching. Override per-host below or via
+# --extra-vars if it ever needs to differ per host.
+[waloop]
+waloop1 ansible_host=203.0.113.10
+waloop2 ansible_host=203.0.113.11
+waloop3 ansible_host=203.0.113.12
+
+[waloop:vars]
+ansible_user=deploy
+
+# The collector host — the fleet's single edge Traefik + Prometheus
+# point. Edge Traefik here fronts all 3 waloop hosts, terminates TLS
+# once per centre, and health-checks each centre's /<centre_id>/primary
+# across all 3 waloop hosts to route only to whichever is actually
+# primary right now. Prometheus also runs here, scraping through this
+# same Traefik. See docs/architecture.md for the full picture, and
+# sync-collector.yml for how the Traefik dynamic config and Prometheus
+# file_sd targets file get kept in sync with whatever's actually
+# deployed on waloop. (Named "collector" rather than after the actual
+# hostname, deliberately — keeps this inventory portable across
+# whatever you actually call the host.)
+[collector]
+collector ansible_host=203.0.113.20
+
+[collector:vars]
+ansible_user=deploy

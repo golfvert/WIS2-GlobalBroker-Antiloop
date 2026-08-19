@@ -1,0 +1,79 @@
+[Unit]
+Description=antiloop WIS2 Global Broker Relay - %i
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+# antiloop loads its own env files (cmd/antiloop/main.go's
+# loadEnvFile) — common.env first, then <centre_id>.env, both read
+# relative to WorkingDirectory below, which is why both live together
+# in wis2node/ rather than split across directories. %i (the instance
+# name after the @, e.g. "se-smhi") is passed as the centre_id
+# argument.
+WorkingDirectory={{ antiloop_dir }}/wis2node
+
+# Binary versioning (corrected the same day it was introduced, after a
+# live failure): multiple antiloop-<version> binaries coexist under
+# bin/ (see README.md) so upgrading one wis2node doesn't force every
+# other one onto a new build. Which version THIS instance runs is read
+# from wis2node/%i.version (ANTILOOP_VERSION=<version>) — NOT via
+# EnvironmentFile= + ${VAR} substitution in ExecStart, which looks
+# like it should work but doesn't: systemd only expands ${VAR} in
+# ExecStart against Environment= values known when the unit file
+# itself is parsed, not values from EnvironmentFile=, which is read
+# later, at process-spawn time. That combination failed with
+# status=203/EXEC ("No such file or directory") trying to exec the
+# literal, unexpanded path ".../antiloop-${ANTILOOP_VERSION}". A tiny
+# wrapper script that reads the .version file itself and execs the
+# right binary is the reliable way to do this — see bin/run-antiloop.sh
+# (deployed from templates/run-antiloop.sh, itself templated too, just
+# for antiloop_dir — see that file's own doc comment).
+ExecStart={{ antiloop_dir }}/bin/run-antiloop.sh %i
+Restart=on-failure
+RestartSec=5
+{% if service_scope == 'system' %}
+# system scope: this target is an LXC test container whose host
+# doesn't delegate cgroups for logind sessions, so `loginctl
+# enable-linger` fails there with ENODATA regardless of permissions —
+# see deploy_antiloop.yml's doc comment. The system manager doesn't
+# depend on logind sessions/lingering at all, so it sidesteps the
+# problem, at the cost of needing sudo/become to install the unit (see
+# the "Deploy antiloop systemd unit" task's become:).
+#
+# No User=/Group= line -> runs as root. That's what was asked for on
+# this test fleet; if that ever needs tightening, add
+# "User={{ ansible_user }}" / "Group={{ ansible_user }}" here (root
+# can still read {{ antiloop_dir }}'s files regardless, so nothing
+# else changes).
+{% else %}
+# user scope: no User=/Group= here — meaningless (and rejected) in a
+# systemd --user manager, which only ever runs as the user that owns
+# it ({{ ansible_user }}). Real VM targets use this scope: no sudo
+# anywhere, and (unlike the LXC test fleet) `loginctl enable-linger
+# {{ ansible_user }}` is expected to work normally on a real
+# VM/bare-metal host.
+#
+# Sandboxing kept deliberately minimal — a rootless user manager can't
+# grant most of the system-unit hardening (ProtectSystem=strict,
+# PrivateDevices, ProtectKernel*, etc. either fail outright or are
+# silently no-ops without root), so only the directives known to work
+# under `systemctl --user` are set here.
+NoNewPrivileges=true
+PrivateTmp=true
+RestrictSUIDSGID=true
+LockPersonality=true
+{% endif %}
+
+# Logs go to the journal (`journalctl --user -u antiloop@%i` for
+# --user scope, plain `journalctl -u antiloop@%i` for system scope) ->
+# Vector's journald source picks them up, tagged by unit name so
+# centre_id is still attributable per line.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=antiloop-%i
+
+[Install]
+WantedBy={{ 'multi-user.target' if service_scope == 'system' else 'default.target' }}
