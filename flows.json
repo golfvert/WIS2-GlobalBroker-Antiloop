@@ -7687,7 +7687,7 @@
                 "t": "set",
                 "p": "topic",
                 "pt": "msg",
-                "to": "[\"wnm_schema\",$base64encode($string(payload)),\"EX\",172800]",
+                "to": "[\"wis2gb:cache:schema:wnm\",$base64encode($string(payload))]",
                 "tot": "jsonata"
             },
             {
@@ -7894,7 +7894,7 @@
                 "t": "set",
                 "p": "topic",
                 "pt": "msg",
-                "to": "[\"wme_schema\",$base64encode($string(payload)),\"EX\",172800]",
+                "to": "[\"wis2gb:cache:schema:wme\",$base64encode($string(payload))]",
                 "tot": "jsonata"
             },
             {
