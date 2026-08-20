@@ -273,11 +273,25 @@ func main() {
 	// fetched and decoded for real, see allowlist.GDCRegistry doc
 	// comment) and TOPIC_URL's flat md5 hash set (also fetched and
 	// confirmed: ~2500 raw hashes, one per line, no CSV) ---
-	metadataRegistry := allowlist.NewGDCRegistry(cfg.GDCURL, cfg.CentreID, rdb)
+	metadataRegistry := allowlist.NewGDCRegistry(ctx, cfg.GDCURL, cfg.CentreID, rdb)
 	go metadataRegistry.RunRefreshLoop(ctx, cfg.AllowlistRefresh)
+	// RunIndexSyncLoop is independent of RunRefreshLoop's own HTTP-fetch
+	// gate — every process warms its own fast-path cache from the
+	// shared per-centre index this way, not just whichever process
+	// happens to win the fetch this cycle. See allowlist.GDCRegistry's
+	// package doc comment ("Go-only addition").
+	go metadataRegistry.RunIndexSyncLoop(ctx)
 
-	topicHashSet := allowlist.New(cfg.TopicURL, rdb)
-	go topicHashSet.RunRefreshLoop(ctx, cfg.AllowlistRefresh, "topic-hierarchy")
+	// TOPIC_URL's refresh cadence is intentionally NOT cfg.AllowlistRefresh
+	// — it's driven by allowlist.TopicRefreshCheckInterval (1h), matching
+	// the flow's own per-process "TTL" inject node exactly. Each hourly
+	// tick is a cheap TTL check against this process's own sentinel key;
+	// the real fetch+write only happens roughly once every 12-36h per
+	// process, fully decentralized (no fleet-wide coordination) — see
+	// allowlist.go's package doc comment and Set.Refresh.
+	topicHashSet := allowlist.New(ctx, cfg.TopicURL, rdb)
+	go topicHashSet.RunRefreshLoop(ctx, allowlist.TopicRefreshCheckInterval, "topic-hierarchy")
+	go topicHashSet.RunIndexSyncLoop(ctx)
 
 	// --- MQTT: publisher fan-out ---
 	// `var` + separate assignment (not `:=`) so the onState closure can

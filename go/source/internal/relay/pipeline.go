@@ -401,24 +401,31 @@ func (p *Pipeline) process(m Msg) {
 	}
 
 	// 3. Metadata/channel-registration check — only if METADATA_CHECK_
-	// OPTION enables it, and only meaningful when chk.DataTopic is set
-	// (Check()'s "data core/recommended" branch — the only one that
-	// produces one). Checks against the GDC registry using the RAW
-	// topic path (chk.DataTopic, e.g. "data/core/weather/.../synop"),
-	// not the hashed chk.Topic key — that one's for the TOPIC_URL check
+	// OPTION enables it, and only when this message's RAW topic has
+	// segment[4]=="data" (topics.DataTopicOf). Deliberately checked
+	// independent of chk/TOPIC_CHECK_OPTION — see DataTopicOf's doc
+	// comment for why coupling this to chk.DataTopic was a real bug,
+	// since fixed. Checks against the GDC registry using the raw
+	// topic path (dataTopic, e.g. "data/core/weather/.../synop"), not
+	// the hashed chk.Topic key — that one's for the TOPIC_URL check
 	// above, a different file with a different shape. See
-	// allowlist.GDCRegistry doc comment for the full reasoning.
-	if p.MetadataCheckOption.Enabled() && chk.DataTopic != "" && p.Metadata != nil {
-		t0 := time.Now()
-		registered := p.Metadata.Has(chk.DataTopic)
-		p.timing.metadataCheck.record(time.Since(t0))
-		p.debugf("checks", "metadata check: data_topic=%q registered=%v", chk.DataTopic, registered)
-		if !registered {
-			p.Metrics.MessagesNoMetadata.Inc()
-			p.Monitor.ReportMetadataFailure(topic, payload)
-			if p.MetadataCheckOption == config.CheckDiscard {
-				p.debugf("checks", "metadata check: DISCARDING data_topic=%q", chk.DataTopic)
-				return
+	// allowlist.GDCRegistry doc comment for the full reasoning, and
+	// for exactly which Redis key metadataID vs. the empty-string
+	// fallback resolves to.
+	if p.MetadataCheckOption.Enabled() && p.Metadata != nil {
+		if dataTopic, ok := topics.DataTopicOf(topic); ok {
+			t0 := time.Now()
+			metadataID := extractMetadataID(payload)
+			registered := p.Metadata.Has(metadataID, dataTopic)
+			p.timing.metadataCheck.record(time.Since(t0))
+			p.debugf("checks", "metadata check: data_topic=%q metadata_id=%q registered=%v", dataTopic, metadataID, registered)
+			if !registered {
+				p.Metrics.MessagesNoMetadata.Inc()
+				p.Monitor.ReportMetadataFailure(topic, payload)
+				if p.MetadataCheckOption == config.CheckDiscard {
+					p.debugf("checks", "metadata check: DISCARDING data_topic=%q", dataTopic)
+					return
+				}
 			}
 		}
 	}
@@ -554,6 +561,26 @@ func extractMessageID(payload []byte) string {
 		return ""
 	}
 	return envelope.ID
+}
+
+// extractMetadataID pulls payload.properties.metadata_id, mirroring
+// the original flow's "Metadata_id ?" switch exactly:
+// $type(payload.properties.metadata_id) = "string" and
+// $length(payload.properties.metadata_id) > 0. A missing field, a
+// non-string value, or a malformed payload all collapse to "" here,
+// same as that jsonata expression evaluating false — which is exactly
+// what GDCRegistry.Has()'s own "" -> fall back to centre_id" branch is
+// built to receive.
+func extractMetadataID(payload []byte) string {
+	var envelope struct {
+		Properties struct {
+			MetadataID string `json:"metadata_id"`
+		} `json:"properties"`
+	}
+	if err := json.Unmarshal(payload, &envelope); err != nil {
+		return ""
+	}
+	return envelope.Properties.MetadataID
 }
 
 // stripPropertiesContent ports the "Delete" change node:
