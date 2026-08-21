@@ -26,6 +26,7 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
 	"antiloop/internal/allowlist"
@@ -304,9 +305,25 @@ func main() {
 	// flow's pub-broker-connectivity Open/Queue signal feeds the SAME
 	// early q-gate as the primary/secondary election result, not just
 	// the final publish step.
+	// mqttUUID is the one crypto.randomUUID()-equivalent value the
+	// original flow generates exactly once per process (its "UUID"
+	// function node, flows.json) and fans out to every single "Handle
+	// connection" change node — subscriber, subscriber-backup, and every
+	// MQTT_PUB_BROKER[_2..5] target alike — each of which appends its
+	// own prefix (GB_ID / MQTT_CLIENTID_BACKUP / CENTRE_ID) plus this
+	// UUID's own last segment to build its own broker.clientid. See
+	// mqttbroker.BuildClientID's doc comment for the exact reproduction.
+	// Deliberately a fresh, dedicated UUID — not elector.UUID() (built
+	// further down, and used for a wholly separate purpose: Redis
+	// election/liveness identity) — reproducing this specific flow
+	// mechanism doesn't require reusing that one, only generating one
+	// the same way (uuid.NewString()) and sharing it the same way (one
+	// value, every broker connection).
+	mqttUUID := uuid.NewString()
+
 	var publisher *mqttbroker.Publisher
 	var pipeline *relay.Pipeline
-	publisher = mqttbroker.NewPublisher(cfg.MQTTPubTargets, func(cs mqttbroker.ConnState) {
+	publisher = mqttbroker.NewPublisher(cfg.MQTTPubTargets, cfg.CentreID, mqttUUID, func(cs mqttbroker.ConnState) {
 		m.AllConnected.Set(boolToFloat(publisher.AllConnected()))
 		if pipeline != nil {
 			pipeline.SetPubConnected(publisher.AnyConnected())
@@ -552,6 +569,7 @@ func main() {
 		cfg.MQTTBackup,
 		cfg.MQTTSubTopics,
 		cfg.MQTTSubQoS, // MQTT_SUB_QOS, default 0 — see config.Config doc comment
+		cfg.GBID, cfg.MQTTClientIDBackup, mqttUUID,
 		func(_ mqtt.Client, msg mqtt.Message) {
 			if dbg.has("subscriber") && dbg.topicMatch(msg.Topic()) {
 				// -d subscriber: raw, as received, before any check/dedup/

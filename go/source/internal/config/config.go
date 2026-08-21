@@ -40,6 +40,38 @@ type MQTTTarget struct {
 	// publish targets default to true (verify), since nothing in the
 	// flow indicates that side should behave differently.
 	VerifyCert bool
+
+	// TLS12Force caps this target's TLS handshake at TLS 1.2 — a
+	// Go-only knob with no flow-side equivalent, added 2026-08-20 for
+	// brokers whose TLS stack cannot handle a modern TLS-1.3-capable
+	// ClientHello (legacy record version 1.2 plus supported_versions/
+	// key_share extensions) and responds with a generic
+	// "handshake failure" alert instead of correctly negotiating down
+	// to 1.2, even though a legacy TLS-1.2-only ClientHello (no such
+	// extensions) succeeds against the exact same broker — confirmed
+	// via `openssl s_client -tls1_2` (succeeds) vs `-tls1_3` (clean
+	// "protocol version" alert, proving the broker doesn't support 1.3
+	// at all) against cn-cma's wis2node.wis.cma.cn:8883. Go's default
+	// tls.Config offers up to 1.3 unless told otherwise; Node.js's TLS
+	// stack apparently negotiates around this broker's quirk without
+	// needing an explicit cap, which is presumably why this was never
+	// an issue on the Node-RED side. Off by default — only set for
+	// centres confirmed to need it. Named TLS12Force (not TLS12Only) to
+	// name it for what it actually does — forces the handshake down to
+	// 1.2 to work around a broken broker — rather than the older,
+	// vaguer TLS12Only.
+	//
+	// Capping MaxVersion is only half of what this flag actually does
+	// (see mqttbroker.go's newClient, where TLS12Force is consumed) —
+	// confirmed live, 2026-08-20: a MaxVersion-only cap against cn-cma
+	// still failed with the same "remote error: tls: handshake
+	// failure" as before, because Go's crypto/tls also disables every
+	// RSA-key-exchange cipher suite by default, and this broker's
+	// legacy TLS stack only accepts one of those (TLS_RSA_WITH_AES_256
+	// _CBC_SHA — confirmed via `openssl s_client -tls1_2`). newClient
+	// re-enables that suite explicitly on top of Go's normal secure
+	// defaults when this flag is set.
+	TLS12Force bool
 }
 
 // CheckOption mirrors MSG_CHECK_OPTION / TOPIC_CHECK_OPTION /
@@ -242,9 +274,19 @@ type Config struct {
 	AllowlistRefresh time.Duration
 
 	// GBID is this broker's own identity, used as the CloudEvents
-	// "source" field in the monitor heartbeat and as the report_by
-	// label on every exported Prometheus metric.
+	// "source" field in the monitor heartbeat, as the report_by
+	// label on every exported Prometheus metric, and — reproducing the
+	// flow's own "Handle connection" change node for the primary SUB
+	// broker exactly (see mqttbroker.BuildClientID) — as the prefix of
+	// the SUB client's own MQTT client id.
 	GBID string
+
+	// MQTTClientIDBackup is MQTT_CLIENTID_BACKUP — the flow's own SUB
+	// backup broker reads a DIFFERENT env var than GBID for its own
+	// client id prefix (its own "Handle connection" change node, a
+	// separate one from the primary SUB's), not GB_ID itself — see
+	// mqttbroker.BuildClientID's doc comment.
+	MQTTClientIDBackup string
 
 	MsgCheckOption      CheckOption
 	TopicCheckOption    CheckOption
@@ -276,6 +318,7 @@ func Load() (*Config, error) {
 			Password:   os.Getenv("MQTT_SUB_PASSWORD"),
 			Keepalive:  getenvSecondsDuration("MQTT_SUB_KEEPALIVE", 60*time.Second),
 			VerifyCert: getenvBool("MQTT_SUB_VERIFYCERT", false),
+			TLS12Force: getenvBool("MQTT_SUB_TLS12FORCE", false),
 		},
 		// The backup subscriber has no keepalive override in the
 		// original flow (its keepalive is fixed at 60s in the flow's
@@ -286,7 +329,9 @@ func Load() (*Config, error) {
 			Username:   os.Getenv("MQTT_SUB_USERNAME_BACKUP"),
 			Password:   os.Getenv("MQTT_SUB_PASSWORD_BACKUP"),
 			VerifyCert: getenvBool("MQTT_SUB_VERIFYCERT_BACKUP", false),
+			TLS12Force: getenvBool("MQTT_SUB_TLS12FORCE_BACKUP", false),
 		},
+		MQTTClientIDBackup: os.Getenv("MQTT_CLIENTID_BACKUP"),
 
 		RedisURL:     os.Getenv("REDIS_URL"),
 		RedisCluster: getenvBool("REDIS_CLUSTER", true),
@@ -348,9 +393,10 @@ func Load() (*Config, error) {
 		}
 	}
 
-	// Only the broker URL is per-target-suffixed among the 5 possible
-	// publish targets — username, password, and keepalive are shared
-	// across all of them via a single unsuffixed variable each.
+	// Only the broker URL — and now TLS12Force, see below — is
+	// per-target-suffixed among the 5 possible publish targets;
+	// username, password, and keepalive are shared across all of them
+	// via a single unsuffixed variable each.
 	username := os.Getenv("MQTT_PUB_USERNAME")
 	password := os.Getenv("MQTT_PUB_PASSWORD")
 	keepalive := getenvSecondsDuration("MQTT_PUB_KEEPALIVE", 60*time.Second)
@@ -371,6 +417,12 @@ func Load() (*Config, error) {
 			// flow suggests publish-side verification should be
 			// skipped, so this keeps Go's ordinary secure default.
 			VerifyCert: true,
+			// TLS12Force — per-target like URL, not shared like
+			// username/password/keepalive: this is a workaround for one
+			// specific broker's TLS stack (see MQTTTarget.TLS12Force's
+			// doc comment), not something that should apply fleet-wide
+			// just because one target needs it.
+			TLS12Force: getenvBool("MQTT_PUB_TLS12FORCE"+sfx, false),
 		})
 	}
 

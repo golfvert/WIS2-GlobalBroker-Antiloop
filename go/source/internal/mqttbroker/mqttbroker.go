@@ -10,6 +10,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"os"
@@ -22,6 +23,51 @@ import (
 	"antiloop/internal/config"
 	"antiloop/internal/gate"
 )
+
+// keyLogFileOnce/keyLogWriter back keyLogFile below — a process-wide
+// singleton so every TLS connection this process makes (subscriber,
+// backup, every pub target) shares ONE open file handle/writer rather
+// than each racing to open (and each holding open) its own, which
+// would risk interleaved/truncated lines under concurrent writes.
+var (
+	keyLogFileOnce sync.Once
+	keyLogWriter   io.Writer
+)
+
+// keyLogFile returns the shared SSLKEYLOGFILE writer for TLS session
+// key logging, or nil if SSLKEYLOGFILE isn't set (the overwhelmingly
+// common case — this is nil, and every TLS connection behaves exactly
+// as before, unless someone explicitly exports SSLKEYLOGFILE before
+// starting antiloop).
+//
+// Unlike curl, OpenSSL-based tools, Node.js, and browsers — which all
+// honor this env var automatically — Go's crypto/tls does NOT: an
+// application has to explicitly read it and wire tls.Config.
+// KeyLogWriter itself, or the env var does nothing at all (confirmed
+// live, 2026-08-20: SSLKEYLOGFILE set on antiloop's systemd unit
+// produced no file, silently, until this wiring was added).
+//
+// Purely a debugging aid for otherwise-invisible TLS/WebSocket
+// handshake failures — e.g. capturing antiloop's real ClientHello and
+// HTTP upgrade request with tcpdump, then decrypting it in Wireshark
+// (File -> Preferences -> Protocols -> TLS -> (Pre)-Master-Secret log
+// filename) to diff byte-for-byte against a reference client's
+// request. Never set in normal operation.
+func keyLogFile() io.Writer {
+	keyLogFileOnce.Do(func() {
+		path := os.Getenv("SSLKEYLOGFILE")
+		if path == "" {
+			return
+		}
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+		if err != nil {
+			log.Printf("mqtt: SSLKEYLOGFILE=%q: %v (TLS key logging disabled)", path, err)
+			return
+		}
+		keyLogWriter = f
+	})
+	return keyLogWriter
+}
 
 // EnableLogging wires paho's internal ERROR/CRITICAL/WARN loggers to
 // the standard logger. paho defaults to discarding all of these, which
@@ -51,23 +97,50 @@ func EnableLogging(debug bool) {
 }
 
 // normalizeBrokerURL fills in the conventional default port when a
-// broker URL doesn't specify one. paho.mqtt.golang dials uri.Host
-// verbatim (see its net.go) and does NOT default a port itself — a
-// URL like "mqtts://host" with no port fails at actual dial time with
+// broker URL doesn't specify one — for mqtt/mqtts/tcp/tcps/ssl/tls
+// schemes ONLY. paho.mqtt.golang dials uri.Host verbatim for those
+// (see its net.go) and does NOT default a port itself — a URL like
+// "mqtts://host" with no port fails at actual dial time with
 // something like "address host: missing port in address". Combined
 // with SetConnectRetry(true) (see EnableLogging's doc comment), that
 // failure was previously invisible, indistinguishable from a slow but
 // working connection attempt.
 //
+// ws/wss are deliberately EXCLUDED from this normalization — fixed
+// 2026-08-20 after it caused a real, hard-to-diagnose production bug
+// (fr-ifremer-argo, wss://mosquitto.ifremer.fr): for websocket
+// targets, paho hands the URL straight to gorilla/websocket's
+// Dialer.Dial(), which does its own, separate default-port handling
+// in its net/http-facing client.go — critically, it does NOT do this
+// uniformly. It sets the HTTP request's Host header directly from
+// url.URL.Host, completely unmodified (`Host: u.Host` in its
+// DialContext), while only the actual TCP dial address goes through
+// its own default-port fallback (hostPortNoPort()). So a bare
+// "wss://mosquitto.ifremer.fr" already dials port 443 correctly on
+// its own, while sending a clean "Host: mosquitto.ifremer.fr" header
+// with no port. Pre-appending ":443" here (as this function used to,
+// unconditionally) mutates u.Host BEFORE gorilla ever sees it, so
+// that unmodified-Host-header logic faithfully reproduces the port
+// right back into the wire request: "Host: mosquitto.ifremer.fr:443".
+// Confirmed via a TLS-1.3 keylog + pcap capture, decrypted by hand,
+// showing exactly that literal Host header on every antiloop
+// connection attempt — and ifremer's Apache frontend doesn't
+// recognize it as matching its mosquitto.ifremer.fr vhost, so it
+// 301-redirects back to https://mosquitto.ifremer.fr/, silently
+// breaking the WebSocket upgrade. curl testing never reproduced this
+// because no manual test happened to include a literal ":443" in the
+// Host header the way antiloop's own normalization did. Leaving ws/wss
+// URLs untouched here lets gorilla's own (correct) split behavior do
+// the right thing on both fronts.
+//
 // If the URL already has a port, or fails to parse, or has no host,
-// it's returned unchanged — this only fills in a genuinely missing
-// port, never overrides one that's already there.
+// it's returned unchanged either way — this only ever fills in a
+// genuinely missing port on a scheme where doing so is safe, never
+// overrides one that's already there.
 //
 // Defaults, per scheme: mqtt/tcp -> 1883, mqtts/ssl/tls/tcps -> 8883
-// (the two plain-MQTT ports), ws -> 80, wss -> 443 (WebSocket rides
-// over plain HTTP/HTTPS, so it takes HTTP's default ports, not MQTT's
-// — a ws:// broker with no port means "use the standard web port",
-// same as a browser would).
+// (the two plain-MQTT ports). ws/wss are left alone entirely — see
+// above.
 func normalizeBrokerURL(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil || u.Host == "" || u.Port() != "" {
@@ -77,10 +150,8 @@ func normalizeBrokerURL(raw string) string {
 	switch u.Scheme {
 	case "mqtts":
 		defaultPort = "8883"
-	case "ws":
-		defaultPort = "80"
-	case "wss":
-		defaultPort = "443"
+	case "ws", "wss":
+		return raw // gorilla/websocket handles its own default port — see doc comment above
 	default: // "mqtt", "tcp", and anything unrecognized
 		defaultPort = "1883"
 	}
@@ -145,6 +216,13 @@ type Subscriber struct {
 
 	backupTarget config.MQTTTarget
 
+	// clientIDBackup/processUUID — activateBackup (below) needs these
+	// to build the backup connection's own client id lazily, at
+	// activation time, the same way s.primary's was built up front in
+	// NewSubscriber — see BuildClientID's doc comment.
+	clientIDBackup string
+	processUUID    string
+
 	// backup and failover are both nil when no backup is configured
 	// (backup.URL == "" at construction) — same as today's behavior in
 	// that case. mu guards backup, which is constructed/torn down
@@ -155,20 +233,27 @@ type Subscriber struct {
 	failover *backupFailover
 }
 
-func NewSubscriber(primary, backup config.MQTTTarget, topics []string, qos byte, onMessage mqtt.MessageHandler, onState func(ConnState)) *Subscriber {
+// gbID/clientIDBackup/processUUID feed BuildClientID for the primary
+// and backup connections respectively — see that function's doc
+// comment. processUUID must be the one shared per-process UUID used
+// for every MQTT connection this process makes (subscriber, backup,
+// and every publish target alike) — see cmd/antiloop/main.go.
+func NewSubscriber(primary, backup config.MQTTTarget, topics []string, qos byte, gbID, clientIDBackup, processUUID string, onMessage mqtt.MessageHandler, onState func(ConnState)) *Subscriber {
 	s := &Subscriber{
-		topics:       topics,
-		qos:          qos,
-		onMessage:    onMessage,
-		onState:      onState,
-		backupTarget: backup,
+		topics:         topics,
+		qos:            qos,
+		onMessage:      onMessage,
+		onState:        onState,
+		backupTarget:   backup,
+		clientIDBackup: clientIDBackup,
+		processUUID:    processUUID,
 	}
 
 	if backup.URL != "" {
 		s.failover = newBackupFailover(s.activateBackup, s.deactivateBackup)
 	}
 
-	s.primary = newClient("subscriber", primary, func(cs ConnState) {
+	s.primary = newClient("subscriber", BuildClientID(gbID, processUUID), primary, func(cs ConnState) {
 		cs.Name = "primary"
 		if onState != nil {
 			onState(cs)
@@ -217,7 +302,7 @@ func (s *Subscriber) activateBackup() {
 		return // already active — shouldn't happen given backupFailover's own pending-timer guard, but don't double-dial
 	}
 	log.Printf("mqtt [subscriber-backup] primary down for 60s, activating backup broker")
-	s.backup = newClient("subscriber-backup", s.backupTarget, func(cs ConnState) {
+	s.backup = newClient("subscriber-backup", BuildClientID(s.clientIDBackup, s.processUUID), s.backupTarget, func(cs ConnState) {
 		cs.Name = "backup"
 		if s.onState != nil {
 			s.onState(cs)
@@ -386,15 +471,25 @@ type publishRequest struct {
 // backlog flushes.
 var ErrQueued = errors.New("mqttbroker: no pub broker connected, message queued for later delivery")
 
-func NewPublisher(targets []config.MQTTTarget, onState func(ConnState)) *Publisher {
+// centreID/processUUID feed BuildClientID — every publish target uses
+// the exact same client id (centreID + "_" + the shared per-process
+// UUID's own suffix), reproducing the flow's own "Handle connection"
+// change node for EVERY MQTT_PUB_BROKER[_2..5] target: all five use the
+// literal same jsonata expression, keyed off CENTRE_ID, not a
+// per-target variant — see mqttbroker.BuildClientID's doc comment.
+// Harmless even though every target ends up with an identical client
+// id string: MQTT client-id uniqueness is enforced per-broker, and
+// each target is a distinct broker.
+func NewPublisher(targets []config.MQTTTarget, centreID, processUUID string, onState func(ConnState)) *Publisher {
 	p := &Publisher{}
 	// 50000 matches internal/gate's own doc comment on the largest
 	// observed q-gate maxQueueLength in flows.json — same convention,
 	// same justification, reused here rather than invented fresh.
 	p.gate = gate.New(50000, p.drainOne)
+	clientID := BuildClientID(centreID, processUUID)
 	for i, t := range targets {
 		name := fmt.Sprintf("pub-%d", i+1)
-		c := newClient(name, t, func(cs ConnState) {
+		c := newClient(name, clientID, t, func(cs ConnState) {
 			cs.Name = name
 			if onState != nil {
 				onState(cs)
@@ -493,6 +588,36 @@ type client struct {
 	mc mqtt.Client
 }
 
+// BuildClientID reproduces the flow's own broker.clientid computation
+// exactly — each of its three distinct "Handle connection" change
+// nodes (primary SUB, backup SUB, every MQTT_PUB_BROKER[_2..5] target)
+// builds it the same way: prefix + "_" + the last (12-hex-char)
+// segment of one shared, per-process crypto.randomUUID() — but each
+// reads a DIFFERENT env var for that prefix: GB_ID for the primary SUB
+// connection, MQTT_CLIENTID_BACKUP for the backup SUB connection, and
+// CENTRE_ID (always) for every PUB target alike. If prefix is empty —
+// only possible for the two SUB variants, since CENTRE_ID is a
+// required env var (config.Load fails startup without it) — the flow
+// falls back to the bare UUID string as the WHOLE client id,
+// unprefixed, matching its own jsonata ternary exactly.
+//
+// processUUID must be the SAME string across every call for one
+// process's entire lifetime (see cmd/antiloop/main.go's single
+// uuid.NewString() call) — the flow generates crypto.randomUUID()
+// exactly once per process, at startup, and fans that one value out to
+// every "Handle connection" node's clientid computation, not once per
+// broker connection.
+func BuildClientID(prefix, processUUID string) string {
+	if prefix == "" {
+		return processUUID
+	}
+	segment := processUUID
+	if parts := strings.Split(processUUID, "-"); len(parts) == 5 {
+		segment = parts[4]
+	}
+	return prefix + "_" + segment
+}
+
 // onConnect, if non-nil, runs every time the client (re)connects —
 // including the very first connection, not just reconnects. Subscribers
 // pass one to (re)arm their subscriptions there instead of doing it
@@ -505,7 +630,11 @@ type client struct {
 // connectivity is visible in the process log without needing metrics
 // scraped first. This is separate from -d (see cmd/antiloop/main.go),
 // which is about individual message traffic, not connection state.
-func newClient(clientIDSuffix string, target config.MQTTTarget, onState func(ConnState), onConnect func(mqtt.Client)) *client {
+//
+// clientIDSuffix is purely a Go-side log tag (has no bearing on the
+// actual MQTT client id sent to the broker) — clientID, built by the
+// caller via BuildClientID, is what's actually sent on the wire.
+func newClient(clientIDSuffix, clientID string, target config.MQTTTarget, onState func(ConnState), onConnect func(mqtt.Client)) *client {
 	keepalive := target.Keepalive
 	if keepalive == 0 {
 		keepalive = 60 * time.Second
@@ -518,20 +647,51 @@ func newClient(clientIDSuffix string, target config.MQTTTarget, onState func(Con
 
 	opts := mqtt.NewClientOptions().
 		AddBroker(brokerURL).
-		SetClientID(fmt.Sprintf("antiloop-%s-%d", clientIDSuffix, time.Now().UnixNano())).
+		SetClientID(clientID).
 		SetAutoReconnect(true).
 		SetConnectRetry(true).
 		SetKeepAlive(keepalive)
 
 	// TLS certificate verification (see config.MQTTTarget.VerifyCert's
-	// doc comment) only applies to TLS schemes (mqtts/ssl/tcps/wss); a
-	// plain mqtt/ws URL has no TLS handshake to skip verification on in
-	// the first place, so this is scoped to not build a pointless
-	// tls.Config for those.
+	// doc comment) and TLS12Force (see its own doc comment — a Go-only
+	// compatibility workaround, not a flow-parity concern) only apply
+	// to TLS schemes (mqtts/ssl/tcps/wss); a plain mqtt/ws URL has no
+	// TLS handshake to configure in the first place, so this is scoped
+	// to not build a pointless tls.Config for those.
 	scheme, _, _ := strings.Cut(brokerURL, "://")
 	switch scheme {
 	case "mqtts", "ssl", "tcps", "wss":
-		opts.SetTLSConfig(&tls.Config{InsecureSkipVerify: !target.VerifyCert})
+		tlsConfig := &tls.Config{InsecureSkipVerify: !target.VerifyCert}
+		if target.TLS12Force {
+			tlsConfig.MaxVersion = tls.VersionTLS12
+			// MaxVersion alone is not enough: Go's crypto/tls disables
+			// every non-forward-secret, RSA-key-exchange cipher suite
+			// by default (see crypto/tls's disabledCipherSuites) — that
+			// list includes TLS_RSA_WITH_AES_256_CBC_SHA, the exact
+			// suite cn-cma's wis2node.wis.cma.cn:8883 was confirmed
+			// (via `openssl s_client -tls1_2`, negotiated as
+			// "AES256-SHA") to actually support. Without this, a
+			// TLS-1.2-capped Go ClientHello still offers only modern
+			// ECDHE suites, this broker's legacy stack supports none of
+			// them, and the result is the exact same generic
+			// "handshake failure" alert as the uncapped case — proven
+			// live, 2026-08-20 (MaxVersion cap alone deployed, same
+			// failure recurred). Explicitly re-enabling the two RSA-kex
+			// CBC-SHA suites, on top of Go's normal secure defaults
+			// (kept, not replaced, so this remains safe against any
+			// future cn-cma cert/broker rotation that isn't this
+			// broken), is required for the handshake to actually
+			// succeed.
+			cipherSuites := []uint16{tls.TLS_RSA_WITH_AES_256_CBC_SHA, tls.TLS_RSA_WITH_AES_128_CBC_SHA}
+			for _, c := range tls.CipherSuites() {
+				cipherSuites = append(cipherSuites, c.ID)
+			}
+			tlsConfig.CipherSuites = cipherSuites
+		}
+		if w := keyLogFile(); w != nil {
+			tlsConfig.KeyLogWriter = w
+		}
+		opts.SetTLSConfig(tlsConfig)
 	}
 
 	opts.SetOnConnectHandler(func(mc mqtt.Client) {
