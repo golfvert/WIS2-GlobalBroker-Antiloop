@@ -94,6 +94,19 @@ type pipelineTiming struct {
 type Msg struct {
 	Topic   string
 	Payload []byte
+
+	// ForceDebug, when true, makes every debugf/debugfTopic call this
+	// one message passes through inside process() log unconditionally
+	// — regardless of -d/-t or the fleet-wide Debug/TopicMatch state —
+	// without touching any of that shared state itself. Since #43 made
+	// message processing goroutine-per-message, each process() call
+	// already owns a private Msg value, so this is a pure per-call
+	// override: it can never leak into, or be affected by, whatever
+	// concurrently-processing sibling messages are doing. Zero value
+	// is false, so ordinary subscriber-sourced traffic (HandleMessage)
+	// is entirely unaffected — only HandleMessageWithDebug (used by
+	// /admin/inject) ever sets this.
+	ForceDebug bool
 }
 
 type Pipeline struct {
@@ -330,6 +343,19 @@ func (p *Pipeline) HandleMessage(topic string, payload []byte) {
 	p.gate.Handle(Msg{Topic: topic, Payload: payload})
 }
 
+// HandleMessageWithDebug is HandleMessage plus forceDebug, threaded
+// through as Msg.ForceDebug — see that field's doc comment. Intended
+// for /admin/inject (manual message replay): an operator replaying a
+// stored message almost always wants to see its full journey through
+// Check/Validate/Dedup/Publish regardless of whatever -d categories
+// happen to be active right now, without turning those categories on
+// fleet-wide (which would also log every other message concurrently
+// in flight). The ordinary subscriber path never calls this — it has
+// no use for forced per-message logging and stays on HandleMessage.
+func (p *Pipeline) HandleMessageWithDebug(topic string, payload []byte, forceDebug bool) {
+	p.gate.Handle(Msg{Topic: topic, Payload: payload, ForceDebug: forceDebug})
+}
+
 func (p *Pipeline) process(m Msg) {
 	topic, payload := m.Topic, m.Payload
 
@@ -353,7 +379,7 @@ func (p *Pipeline) process(m Msg) {
 		t0 := time.Now()
 		chk = topics.Check(topic, p.TopicHashes)
 		p.timing.topicCheck.record(time.Since(t0))
-		p.debugf("checks", "topic check: topic=%q allow=%v data_topic=%q", topic, chk.Allow, chk.DataTopic)
+		p.debugf(m.ForceDebug, "checks", "topic check: topic=%q allow=%v data_topic=%q", topic, chk.Allow, chk.DataTopic)
 		if !chk.Allow {
 			p.Metrics.MessagesInvalidTopic.Inc()
 			// Fires on both discard and verify — reporting a failure
@@ -362,7 +388,7 @@ func (p *Pipeline) process(m Msg) {
 			// independent of the discard/verify policy choice.
 			p.Monitor.ReportTopicFailure(topic, payload)
 			if p.TopicCheckOption == config.CheckDiscard {
-				p.debugf("checks", "topic check: DISCARDING topic=%q", topic)
+				p.debugf(m.ForceDebug, "checks", "topic check: DISCARDING topic=%q", topic)
 				return
 			}
 			// verify: counted above, falls through and keeps processing.
@@ -387,7 +413,7 @@ func (p *Pipeline) process(m Msg) {
 			// Prometheus counter). Deliberately checked before, and
 			// independent of, Validate() below.
 		if monitor.NeedsRelCheck(topic, p.CentreID) && !monitor.HasValidRel(payload) {
-			p.debugf("checks", "schema check: DISCARDING topic=%q (WNM links require exactly one canonical/update/deletion rel)", topic)
+			p.debugf(m.ForceDebug, "checks", "schema check: DISCARDING topic=%q (WNM links require exactly one canonical/update/deletion rel)", topic)
 			p.Monitor.ReportSchemaFailure(topic, payload, monitor.ErrBadRel)
 			return
 		}
@@ -399,12 +425,12 @@ func (p *Pipeline) process(m Msg) {
 		if err != nil {
 			log.Printf("[%s] schema validation error on topic %q: %v", p.CentreID, topic, err)
 		}
-		p.debugf("checks", "schema check: topic=%q valid=%v err=%v", topic, valid, err)
+		p.debugf(m.ForceDebug, "checks", "schema check: topic=%q valid=%v err=%v", topic, valid, err)
 		if failed {
 			p.Metrics.MessagesInvalidFormat.Inc()
 			p.Monitor.ReportSchemaFailure(topic, payload, monitor.ClassifySchemaError(topic, p.CentreID, payload))
 			if p.MsgCheckOption == config.CheckDiscard {
-				p.debugf("checks", "schema check: DISCARDING topic=%q", topic)
+				p.debugf(m.ForceDebug, "checks", "schema check: DISCARDING topic=%q", topic)
 				return
 			}
 		}
@@ -428,12 +454,12 @@ func (p *Pipeline) process(m Msg) {
 			metadataID := extractMetadataID(payload)
 			registered := p.Metadata.Has(metadataID, dataTopic)
 			p.timing.metadataCheck.record(time.Since(t0))
-			p.debugf("checks", "metadata check: data_topic=%q metadata_id=%q registered=%v", dataTopic, metadataID, registered)
+			p.debugf(m.ForceDebug, "checks", "metadata check: data_topic=%q metadata_id=%q registered=%v", dataTopic, metadataID, registered)
 			if !registered {
 				p.Metrics.MessagesNoMetadata.Inc()
 				p.Monitor.ReportMetadataFailure(topic, payload)
 				if p.MetadataCheckOption == config.CheckDiscard {
-					p.debugf("checks", "metadata check: DISCARDING data_topic=%q", dataTopic)
+					p.debugf(m.ForceDebug, "checks", "metadata check: DISCARDING data_topic=%q", dataTopic)
 					return
 				}
 			}
@@ -454,9 +480,9 @@ func (p *Pipeline) process(m Msg) {
 		if err != nil {
 			log.Printf("[%s] dedup check error: %v", p.CentreID, err)
 		}
-		p.debugf("checks", "dedup check: id=%q seen=%v err=%v", msgID, seen, err)
+		p.debugf(m.ForceDebug, "checks", "dedup check: id=%q seen=%v err=%v", msgID, seen, err)
 		if seen {
-			p.debugf("checks", "dedup check: DISCARDING id=%q (already seen)", msgID)
+			p.debugf(m.ForceDebug, "checks", "dedup check: DISCARDING id=%q (already seen)", msgID)
 			return
 		}
 	}
@@ -474,7 +500,7 @@ func (p *Pipeline) process(m Msg) {
 	p.timing.publish.record(time.Since(t0))
 	switch {
 	case errors.Is(err, mqttbroker.ErrQueued):
-		p.debugfTopic("publisher", topic, "publish topic=%q: no pub broker connected, queued for later delivery", topic)
+		p.debugfTopic(m.ForceDebug, "publisher", topic, "publish topic=%q: no pub broker connected, queued for later delivery", topic)
 	case err != nil:
 		log.Printf("[%s] publish error (delivered to %d brokers): %v", p.CentreID, delivered, err)
 	}
@@ -483,7 +509,7 @@ func (p *Pipeline) process(m Msg) {
 	// every '\n' it sees — %q escapes them to literal \n text so one
 	// log call stays one journal line (see main.go's matching "recv"
 	// debug line for the fuller explanation).
-	p.debugfTopic("publisher", topic, "publish topic=%q delivered=%d payload=%q", topic, delivered, truncate(payload, debugPayloadLogLimit))
+	p.debugfTopic(m.ForceDebug, "publisher", topic, "publish topic=%q delivered=%d payload=%q", topic, delivered, truncate(payload, debugPayloadLogLimit))
 	if delivered > 0 {
 		p.Metrics.MessagesPublished.Inc()
 		// "pubcount": a running total every publishCountLogInterval
@@ -514,11 +540,17 @@ func (p *Pipeline) logTimingSummary(n uint64) {
 	)
 }
 
-// debugf logs, prefixed with centre_id, only if the given category is
-// currently enabled (via Debug) — a no-op otherwise, including when
-// Debug itself is nil (no -d categories requested at all).
-func (p *Pipeline) debugf(category, format string, args ...interface{}) {
-	if p.Debug == nil || !p.Debug(category) {
+// debugf logs, prefixed with centre_id, if the given category is
+// currently enabled (via Debug) OR force is true — a no-op otherwise,
+// including when Debug itself is nil (no -d categories requested at
+// all). force is always the current message's own Msg.ForceDebug (see
+// its doc comment) — never a shared/global flag, so passing true here
+// only ever affects this one call, for this one message, and never
+// promotes any category for anyone else. The added `!force &&` short-
+// circuit is a single bool compare — negligible next to the schema
+// validation/Redis round trips/MQTT publish this gates around.
+func (p *Pipeline) debugf(force bool, category, format string, args ...interface{}) {
+	if !force && (p.Debug == nil || !p.Debug(category)) {
 		return
 	}
 	log.Printf("[%s] "+format, append([]interface{}{p.CentreID}, args...)...)
@@ -529,13 +561,18 @@ func (p *Pipeline) debugf(category, format string, args ...interface{}) {
 // down to a subset of topics instead of every message. Used only at
 // the publisher log sites; every other category (checks, dedup,
 // timing, pubcount) goes through plain debugf and ignores -t entirely,
-// per TopicMatch's own doc comment on the Pipeline struct.
-func (p *Pipeline) debugfTopic(category, topic, format string, args ...interface{}) {
-	if p.Debug == nil || !p.Debug(category) {
-		return
-	}
-	if p.TopicMatch != nil && !p.TopicMatch(topic) {
-		return
+// per TopicMatch's own doc comment on the Pipeline struct. force (see
+// debugf) also bypasses TopicMatch, not just Debug/category — -t
+// exists to narrow high-volume live traffic, which doesn't apply to a
+// single deliberately-replayed message that force-debug is for.
+func (p *Pipeline) debugfTopic(force bool, category, topic, format string, args ...interface{}) {
+	if !force {
+		if p.Debug == nil || !p.Debug(category) {
+			return
+		}
+		if p.TopicMatch != nil && !p.TopicMatch(topic) {
+			return
+		}
 	}
 	log.Printf("[%s] "+format, append([]interface{}{p.CentreID}, args...)...)
 }
