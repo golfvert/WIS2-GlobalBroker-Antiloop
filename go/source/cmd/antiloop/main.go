@@ -100,12 +100,21 @@ func main() {
 	// categories, and was the thing that buried a single received
 	// message under a wall of noise before this split.
 	mqttbroker.EnableLogging(dbg.has("paho"))
+	dbg.pahoLogging.Store(dbg.has("paho"))
 
 	// Off unless asked for — see dedup.EnableLogging's doc comment for
 	// why this used to log unconditionally (a leftover from the local
 	// Colima tuning session that never got gated) and was spamming the
 	// journal on real deployments as a result.
 	dedup.EnableLogging(dbg.has("dedup"))
+	dbg.dedupLogging.Store(dbg.has("dedup"))
+
+	// The two Store calls above just cache the STATIC (-d) baseline —
+	// dbg.dynamic is still nil at this point (watchFile/reloadFile
+	// hasn't run yet), so dbg.has(...) here reads static only, which is
+	// exactly the value reloadFile's first run needs to diff against.
+	// See pahoLogging/dedupLogging's doc comment on the debugFlag
+	// struct for why this caching exists at all.
 
 	// Replaces the old `set -a; source ./common.env; source ./<id>.env;
 	// set +a` workflow. That had a real footgun: bash's own quote-
@@ -824,6 +833,31 @@ type debugFlag struct {
 
 	topicStatic  topicFilterFlag
 	topicDynamic atomic.Pointer[topicFilterFlag]
+
+	// pahoLogging/dedupLogging cache the last-APPLIED effective state
+	// for the "paho"/"dedup" categories specifically. Every other
+	// category is read fresh on every debugf() call via has(), so
+	// there's nothing to cache. These two are different: they gate a
+	// one-time package-level logger swap (mqttbroker.EnableLogging /
+	// dedup.EnableLogging), not a per-call check, so something has to
+	// actually re-invoke that swap when the live file flips the
+	// category, not just update the `dynamic` map and assume the
+	// logger picks it up on its own — it doesn't.
+	//
+	// Fixed 2026-08-23: before this, EnableLogging/dedup.EnableLogging
+	// were only ever called once, synchronously, at startup, using the
+	// STATIC (-d) value alone — reloadFile updated `dynamic` but never
+	// re-ran either EnableLogging call. So enabling "paho" (or
+	// "dedup") via the live <centre_id>.debug file did precisely
+	// nothing: mqtt.DEBUG could only ever be turned on by a real -d
+	// paho flag at process exec time. Since run-antiloop.sh's
+	// systemd ExecStart has no flag-passthrough mechanism at all
+	// (exec "$bin" "$centre_id", nothing else), that made "paho"
+	// tracing practically unreachable on any systemd-managed centre —
+	// the exact gap that blocked live packet-level diagnosis of the
+	// ca-eccc-msc/bz-nms duplicate-WME investigation. See reloadFile.
+	pahoLogging  atomic.Bool
+	dedupLogging atomic.Bool
 }
 
 func (d *debugFlag) String() string {
@@ -955,6 +989,29 @@ func (d *debugFlag) reloadFile(centreID, path string) {
 		}
 	}
 	d.dynamic.Store(&next)
+
+	// Re-derive the EFFECTIVE (static UNION dynamic) state for "paho"
+	// and "dedup" specifically, and re-invoke the matching
+	// EnableLogging call whenever that effective state actually
+	// changed — see pahoLogging/dedupLogging's doc comment on the
+	// debugFlag struct for why these two categories need this and
+	// nothing else does. Compared against the last-APPLIED value
+	// (pahoLogging/dedupLogging), not the previous `dynamic` map,
+	// since static can independently make this a no-op forever (a
+	// category already on via -d has nothing left for the file to
+	// toggle).
+	newPaho := d.static["all"] || d.static["paho"] || next["all"] || next["paho"]
+	if d.pahoLogging.Load() != newPaho {
+		mqttbroker.EnableLogging(newPaho)
+		d.pahoLogging.Store(newPaho)
+		log.Printf("[%s] debug file %s: paho packet-level logging (mqtt.DEBUG) now %v", centreID, path, newPaho)
+	}
+	newDedup := d.static["all"] || d.static["dedup"] || next["all"] || next["dedup"]
+	if d.dedupLogging.Load() != newDedup {
+		dedup.EnableLogging(newDedup)
+		d.dedupLogging.Store(newDedup)
+		log.Printf("[%s] debug file %s: dedup logging now %v", centreID, path, newDedup)
+	}
 
 	var prevTopics topicFilterFlag
 	if p := d.topicDynamic.Load(); p != nil {
