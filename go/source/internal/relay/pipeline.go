@@ -105,7 +105,7 @@ type Msg struct {
 	// concurrently-processing sibling messages are doing. Zero value
 	// is false, so ordinary subscriber-sourced traffic (HandleMessage)
 	// is entirely unaffected — only HandleMessageWithDebug (used by
-	// /admin/inject) ever sets this.
+	// /inject) ever sets this.
 	ForceDebug bool
 }
 
@@ -345,7 +345,7 @@ func (p *Pipeline) HandleMessage(topic string, payload []byte) {
 
 // HandleMessageWithDebug is HandleMessage plus forceDebug, threaded
 // through as Msg.ForceDebug — see that field's doc comment. Intended
-// for /admin/inject (manual message replay): an operator replaying a
+// for /inject (manual message replay): an operator replaying a
 // stored message almost always wants to see its full journey through
 // Check/Validate/Dedup/Publish regardless of whatever -d categories
 // happen to be active right now, without turning those categories on

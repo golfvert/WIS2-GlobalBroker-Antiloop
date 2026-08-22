@@ -10,6 +10,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -228,7 +229,22 @@ func main() {
 
 	var primaryFlag atomic.Bool
 	m := metrics.New(cfg.CentreID, cfg.GBID)
-	metricsSrv := &http.Server{Handler: metricsMux(m, primaryFlag.Load)}
+
+	// pipeline is declared here — well before relay.New actually
+	// constructs it further down — for the same reason publisher is
+	// forward-declared below: metricsMux's /inject handler needs to
+	// call into it, but the metrics server (deliberately) starts
+	// listening before pipeline exists, so the closure passed to
+	// metricsMux below captures this variable BY REFERENCE (standard
+	// Go closure semantics — it reads pipeline's value at request
+	// time, not at closure-creation time) rather than being handed a
+	// value that would still be nil forever. getPipeline nil-checks
+	// its own read for the narrow real window where that matters: a
+	// request landing in the brief startup gap before relay.New runs.
+	var pipeline *relay.Pipeline
+	getPipeline := func() *relay.Pipeline { return pipeline }
+
+	metricsSrv := &http.Server{Handler: metricsMux(m, primaryFlag.Load, getPipeline)}
 	go func() {
 		log.Printf("[%s] metrics listening on %s (port %d)", cfg.CentreID, metricsLn.Addr(), metricsPort)
 		if err := metricsSrv.Serve(metricsLn); err != nil && err != http.ErrServerClosed {
@@ -321,8 +337,10 @@ func main() {
 	// value, every broker connection).
 	mqttUUID := uuid.NewString()
 
+	// pipeline itself was already declared above (see the getPipeline
+	// comment near metricsMux's construction) — not redeclared here,
+	// just assigned below once relay.New actually runs.
 	var publisher *mqttbroker.Publisher
-	var pipeline *relay.Pipeline
 	publisher = mqttbroker.NewPublisher(cfg.MQTTPubTargets, cfg.CentreID, mqttUUID, func(cs mqttbroker.ConnState) {
 		m.AllConnected.Set(boolToFloat(publisher.AllConnected()))
 		if pipeline != nil {
@@ -638,7 +656,7 @@ func main() {
 // (see the onChange callback above), not a JSON status endpoint — an
 // HTTP signal an external router can act on isn't the same thing as a
 // human-readable role display.
-func metricsMux(m *metrics.Metrics, isPrimary func() bool) http.Handler {
+func metricsMux(m *metrics.Metrics, isPrimary func() bool, getPipeline func() *relay.Pipeline) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", m.Handler())
 	// "/health", not "/healthz" — the "z" suffix is a
@@ -664,7 +682,79 @@ func metricsMux(m *metrics.Metrics, isPrimary func() bool) http.Handler {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(Version + "\n"))
 	})
+	mux.HandleFunc("/inject", injectHandler(getPipeline))
 	return mux
+}
+
+// injectHandler replays a stored message through the exact same
+// Check/Validate/Dedup/Publish path a real MQTT-received message
+// takes — reproducing Node-RED's manual "inject button" capability,
+// which lets an operator manually replay a message captured
+// elsewhere. Reachable as POST /<centre_id>/inject via both Traefik
+// tiers with no routing changes needed on either: both already use
+// PathPrefix(`/<centre_id>`) + stripPrefix (see internal/traefik's
+// package doc comment and templates/traefik-centre.yml.j2 in the
+// Ansible repo), so this unprefixed /inject route is automatically
+// reachable the same way /<centre_id>/health, /primary, and /metrics
+// already are — no Traefik dynamic-config changes required.
+//
+// Unlike every other route on this mux, this one has a real side
+// effect (it can cause a live publish to real brokers), so — unlike
+// /health, /primary, /version, which don't care — it's restricted to
+// POST and validates its body strictly rather than best-effort.
+//
+// getPipeline, not a bare *relay.Pipeline: this handler is wired in
+// before relay.New actually runs (see the getPipeline closure built
+// alongside metricsMux's call site in main(), and its own comment for
+// why) — the indirection exists purely to survive that startup
+// ordering, not for any per-request reason. Guards against the narrow
+// real window (a request arriving before relay.New has run yet) with
+// 503, same spirit as any other "not ready" case.
+//
+// The message is always injected with ForceDebug=true (see Msg's doc
+// comment) — a manual replay is something an operator deliberately
+// triggered and almost always wants full visibility into, and forcing
+// it per-message rather than toggling -d fleet-wide means no other
+// concurrently-processing message's logging is affected either way.
+//
+// payload is decoded as json.RawMessage, not re-marshaled through an
+// interface{} round-trip — this preserves the submitted WNM's exact
+// bytes (key order, spacing) rather than however Go's own json.Marshal
+// would have chosen to re-serialize it, which matters since the
+// injected message should reproduce exactly what was captured
+// elsewhere, not a re-encoded approximation of it.
+func injectHandler(getPipeline func() *relay.Pipeline) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.Header().Set("Allow", http.MethodPost)
+			http.Error(w, "method not allowed, use POST", http.StatusMethodNotAllowed)
+			return
+		}
+		p := getPipeline()
+		if p == nil {
+			http.Error(w, "not ready yet: pipeline not initialized", http.StatusServiceUnavailable)
+			return
+		}
+		var body struct {
+			Topic   string          `json:"topic"`
+			Payload json.RawMessage `json:"payload"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, fmt.Sprintf("invalid JSON body: %v", err), http.StatusBadRequest)
+			return
+		}
+		if body.Topic == "" {
+			http.Error(w, `"topic" is required`, http.StatusBadRequest)
+			return
+		}
+		if len(body.Payload) == 0 {
+			http.Error(w, `"payload" is required`, http.StatusBadRequest)
+			return
+		}
+		p.HandleMessageWithDebug(body.Topic, []byte(body.Payload), true)
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte("queued\n"))
+	}
 }
 
 func refreshLoop(ctx context.Context, interval time.Duration, fn func()) {
