@@ -96,21 +96,45 @@ jobs:
       # content has no fixed format (could collide with an unrelated
       # git tag or the Node-RED flow's own image:tag scheme otherwise).
       # Re-running this workflow for a tag that already has a release
-      # (e.g. workflow_dispatch replay) updates that release's asset
-      # in place (--clobber) instead of failing on "already exists."
+      # (e.g. a second push that deliberately reuses antiloop.version
+      # instead of bumping it, or a workflow_dispatch replay) updates
+      # that release's asset in place (--clobber) instead of failing on
+      # "already exists."
+      #
+      # RELEASE_NOTES is built once and reused for both the create and
+      # edit paths below — it embeds github.sha, so on a reused-tag
+      # re-run the notes text must be refreshed too (`gh release edit
+      # --notes`), not just the asset. `gh release upload --clobber`
+      # only ever replaces the uploaded file; it does not touch the
+      # release's title/body, so without the explicit edit here the
+      # notes would keep citing whichever commit first created the
+      # release, silently going stale on every later reuse of the same
+      # tag even though the asset itself is current. Deliberately NOT
+      # also passing --target on the edit path: that's the release's
+      # association with the underlying git tag, which already exists
+      # pointing at the first commit that created it — moving it on an
+      # edit is murkier git-tag semantics than this fix is about; the
+      # notes text is the only thing that was actually wrong.
       - name: Create or update GitHub release for this version
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: antiloop-${{ steps.version.outputs.tag }}
           ASSET_PATH: dist/antiloop-${{ steps.version.outputs.tag }}
+          RELEASE_NOTES: >-
+            Automated build of go/source at ${{ github.sha }}. Building
+            this does NOT promote it to the fleet — that's still a
+            separate, deliberate step (shared/antiloop.version in the
+            deploy repos). See go/deploy/fetch_antiloop_binary.sh for
+            how deploy playbooks pull this asset down.
         run: |
           if gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            echo "release $RELEASE_TAG already exists — replacing its asset"
+            echo "release $RELEASE_TAG already exists — replacing its asset and refreshing its notes"
             gh release upload "$RELEASE_TAG" "$ASSET_PATH" --repo "${{ github.repository }}" --clobber
+            gh release edit "$RELEASE_TAG" --repo "${{ github.repository }}" --notes "$RELEASE_NOTES"
           else
             gh release create "$RELEASE_TAG" "$ASSET_PATH" \
               --repo "${{ github.repository }}" \
               --target "${{ github.sha }}" \
               --title "antiloop ${{ steps.version.outputs.tag }}" \
-              --notes "Automated build of go/source at ${{ github.sha }}. Building this does NOT promote it to the fleet — that's still a separate, deliberate step (shared/antiloop.version in the deploy repos). See go/deploy/fetch_antiloop_binary.sh for how deploy playbooks pull this asset down."
+              --notes "$RELEASE_NOTES"
           fi
