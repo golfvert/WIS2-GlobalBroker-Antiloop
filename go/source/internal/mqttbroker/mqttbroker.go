@@ -485,7 +485,19 @@ func NewPublisher(targets []config.MQTTTarget, centreID, processUUID string, onS
 	// 50000 matches internal/gate's own doc comment on the largest
 	// observed q-gate maxQueueLength in flows.json — same convention,
 	// same justification, reused here rather than invented fresh.
-	p.gate = gate.New(50000, p.drainOne)
+	//
+	// maxAge=0 (disabled): unlike relay.Pipeline's gate, this one
+	// buffers publishRequests that have already cleared dedup — a
+	// broker-connectivity outage, not a primary/secondary handoff, put
+	// them here. A stale entry draining late is a delivery-delay
+	// concern, not a duplicate-risk one (dedup already ran), so there's
+	// no TTL it needs to track. This also has no flows.json equivalent
+	// at all: every mqtt-out node in the flow publishes QoS 0 with
+	// cleansession:true and queueQoSZero unset (defaults false), so the
+	// original flow doesn't buffer publish-side outages either — it
+	// just drops the message. This gate is a Go-only addition, not a
+	// port of anything.
+	p.gate = gate.New(50000, 0, p.drainOne)
 	clientID := BuildClientID(centreID, processUUID)
 	for i, t := range targets {
 		name := fmt.Sprintf("pub-%d", i+1)

@@ -232,12 +232,22 @@ type Pipeline struct {
 // time-to-promotion (election tick + fresh-window margin, seconds, but
 // leave real headroom for a slow/stuck election).
 //
+// dedupTTL must be the exact same duration passed to the dedup layer's
+// constructor (dedup.New/NewBatched) — it's used as the gate's maxAge,
+// not an independently-tunable value. See internal/gate's package doc
+// comment: a message that sits queued here longer than the dedup TTL
+// would, if drained late, publish as an undetected duplicate (the
+// instance that actually published it while this one was secondary
+// set a dedup key that's since expired) as well as being stale. Callers
+// must pass the caller's actual dedup TTL, not a separately-chosen
+// number.
+//
 // No workers/queueDepth parameters — see the struct's doc comment
 // above for why there's no fixed worker pool. dispatch (below) spawns
 // process() directly, per message, unbounded.
-func New(ctx context.Context, maxQueueBacklog int) *Pipeline {
+func New(ctx context.Context, maxQueueBacklog int, dedupTTL time.Duration) *Pipeline {
 	p := &Pipeline{ctx: ctx}
-	p.gate = gate.New(maxQueueBacklog, p.dispatch)
+	p.gate = gate.New(maxQueueBacklog, dedupTTL, p.dispatch)
 	return p
 }
 

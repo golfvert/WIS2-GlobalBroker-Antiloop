@@ -352,11 +352,16 @@ func main() {
 	// depends on real batch sizes achieved against the target Redis
 	// deployment; set DEDUP_BATCHING=false to compare against the
 	// unbatched path directly.
+	// dedupTTL is shared with relay.New below as the gate's maxAge, not
+	// just dedup's own key TTL — see relay.New's doc comment for why
+	// those two must never be independently tuned.
+	const dedupTTL = 2 * time.Hour
+
 	var dd *dedup.Dedup
 	if cfg.DedupBatching {
-		dd = dedup.NewBatched(rdb, 2*time.Hour, cfg.DedupBatchSize, cfg.DedupBatchWait, cfg.DedupBatchConcurrency)
+		dd = dedup.NewBatched(rdb, dedupTTL, cfg.DedupBatchSize, cfg.DedupBatchWait, cfg.DedupBatchConcurrency)
 	} else {
-		dd = dedup.New(rdb, 2*time.Hour)
+		dd = dedup.New(rdb, dedupTTL)
 	}
 
 	// relay.New wires up the role-gated backlog buffer — see relay and
@@ -370,7 +375,7 @@ func main() {
 	// goroutine, unbounded, rather than being scheduled onto a
 	// fixed-size worker pool — this scales with actual message
 	// concurrency instead of a manually-tuned pool size.
-	pipeline = relay.New(ctx, 50000)
+	pipeline = relay.New(ctx, 50000, dedupTTL)
 	pipeline.CentreID = cfg.CentreID
 	pipeline.Metrics = m
 	pipeline.Validator = validator
