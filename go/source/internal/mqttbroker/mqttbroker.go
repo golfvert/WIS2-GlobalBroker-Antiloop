@@ -87,12 +87,31 @@ func keyLogFile() io.Writer {
 // packet (ping, publish, subscribe ack, ...) — off by default since
 // it's very chatty; tied to the same -d flag as message-level logging
 // in cmd/antiloop/main.go.
+//
+// Fixed 2026-08-23: this used to be one-way — the `if debug` branch set
+// mqtt.DEBUG to a real logger, but there was no corresponding else, so
+// calling EnableLogging(false) after a prior EnableLogging(true) left
+// mqtt.DEBUG exactly as it was, i.e. still logging. Combined with
+// cmd/antiloop/main.go's reloadFile fix (same day — see debugFlag's
+// pahoLogging field doc comment), which made "debug off" via the live
+// <centre_id>.debug file actually re-invoke this function on the
+// paho category's on→off transition, that transition still did nothing
+// observable, because THIS function's own body only knew how to turn
+// debug on, never off. Confirmed live on cn-cma-global-cache: a "debug
+// all" followed by "debug off" kept streaming [paho DEBUG] lines
+// indefinitely. The else branch resets mqtt.DEBUG to paho's own
+// default no-op logger (mqtt.NOOPLogger{} — what DEBUG is initialized
+// to before EnableLogging is ever called at all), so turning debug off
+// now genuinely silences it instead of leaving the last-assigned real
+// logger in place forever.
 func EnableLogging(debug bool) {
 	mqtt.ERROR = log.New(os.Stderr, "[paho ERROR] ", 0)
 	mqtt.CRITICAL = log.New(os.Stderr, "[paho CRITICAL] ", 0)
 	mqtt.WARN = log.New(os.Stderr, "[paho WARN] ", 0)
 	if debug {
 		mqtt.DEBUG = log.New(os.Stderr, "[paho DEBUG] ", 0)
+	} else {
+		mqtt.DEBUG = mqtt.NOOPLogger{}
 	}
 }
 
