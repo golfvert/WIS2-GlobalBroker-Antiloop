@@ -575,11 +575,30 @@ func main() {
 		}
 	}()
 
-	// Periodic visibility into the backlog — not a Prometheus metric
-	// (none of the 9 confirmed flow metrics cover this, and adding an
-	// unrequested one would surprise existing dashboards), just a log
-	// line so a stuck-secondary backlog growing toward maxQueueBacklog
-	// is noticeable before messages start silently dropping.
+	// Periodic heartbeat — role + backlog, once a minute, unconditionally.
+	//
+	// This replaces an earlier version that only logged when
+	// pipeline.BacklogLen() > 0 ("gate backlog: N messages buffered").
+	// That was meant to flag a problem — a stuck-secondary backlog
+	// growing toward maxAge eviction, see internal/gate's package doc
+	// comment — but the gate is fail-closed while secondary (see
+	// CLAUDE.md's "Failover message buffering" divergence entry), so
+	// backlog is >0 for the entire time an instance isn't primary. The
+	// old line therefore fired every single minute for any secondary
+	// instance regardless of whether anything was actually wrong,
+	// which is both noisy (especially once centralized — see the
+	// waloop Vector/Loki pipeline) and useless as a signal: "backlog
+	// > 0" no longer distinguishes "normal secondary buffering" from
+	// "about to silently lose messages to maxAge eviction."
+	//
+	// Logging unconditionally instead turns this into a proper
+	// liveness/role heartbeat — one line per centre per host per
+	// minute either way, but now the content itself is the useful
+	// part (is this instance primary or secondary right now), with
+	// backlog still attached for troubleshooting rather than being the
+	// sole reason the line exists. Not a Prometheus metric: none of
+	// the 9 confirmed flow metrics cover this, and adding an
+	// unrequested one would surprise existing dashboards.
 	go func() {
 		ticker := time.NewTicker(time.Minute)
 		defer ticker.Stop()
@@ -588,9 +607,11 @@ func main() {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				if n := pipeline.BacklogLen(); n > 0 {
-					log.Printf("[%s] gate backlog: %d messages buffered (secondary or draining)", cfg.CentreID, n)
+				role := "secondary"
+				if elector.IsPrimary() {
+					role = "primary"
 				}
+				log.Printf("[%s] alive: role=%s backlog=%d", cfg.CentreID, role, pipeline.BacklogLen())
 			}
 		}
 	}()
