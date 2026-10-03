@@ -16,10 +16,23 @@ permissions:
   pull-requests: write
   issues: write
   id-token: write
-  actions: read
+  actions: write   # lets the trigger job dispatch this workflow
 
 jobs:
+  # claude-code-action rejects the `push` event ("Unsupported event type: push"),
+  # so a push only re-dispatches this workflow; the real work runs under
+  # workflow_dispatch, which the action supports.
+  trigger:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch port-to-go
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run go-port.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
+
   port-to-go:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
