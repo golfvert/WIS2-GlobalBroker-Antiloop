@@ -67,6 +67,23 @@ jobs:
             echo "### package.json"
             git diff "$prev_sha"..HEAD -- package.json
           } > /tmp/reference-diff.txt
+          lt() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n1)" = "$1" ]; }
+          prev_tag=$(git show "$prev_sha:image:tag" 2>/dev/null | tr -d '[:space:]'); prev_tag=${prev_tag#*:}
+          cur_tag=$(tr -d '[:space:]' < image:tag); cur_tag=${cur_tag#*:}
+          go_ver=$(tr -d '[:space:]' < go/source/antiloop.version)
+          prev_lower=n/a; [ -n "$prev_tag" ] && { lt "$prev_tag" "$go_ver" && prev_lower=yes || prev_lower=no; }
+          cur_lower=no; action=USE_IMAGE_TAG
+          if lt "$cur_tag" "$go_ver"; then cur_lower=yes; action=BUMP_INDEPENDENTLY; fi
+          {
+            echo
+            echo "### Version check"
+            echo "PREV_TAG=$prev_tag"
+            echo "CUR_TAG=$cur_tag"
+            echo "GO_VERSION=$go_ver"
+            echo "PREV_LOWER_THAN_GO=$prev_lower"
+            echo "CUR_LOWER_THAN_GO=$cur_lower"
+            echo "ACTION=$action"
+          } >> /tmp/reference-diff.txt
           echo "Diff written to /tmp/reference-diff.txt ($(wc -l < /tmp/reference-diff.txt) lines)"
 
       - name: Port changes with Claude
@@ -101,6 +118,34 @@ jobs:
             - If you're not confident a change was ported correctly, flag
               that in the PR description too instead of silently proceeding
               — this is a production WIS2 relay.
+            - Versioning. /tmp/reference-diff.txt ends with a "### Version
+              check" section, computed by the workflow (numeric, not
+              string, comparison): PREV_TAG, CUR_TAG, GO_VERSION (the
+              current go/source/antiloop.version), PREV_LOWER_THAN_GO,
+              CUR_LOWER_THAN_GO and ACTION. Trust those values.
+              Only if you changed code under go/source/:
+                * ACTION=USE_IMAGE_TAG: write CUR_TAG (the image:tag value
+                  without the "wis2gb:" prefix, e.g. 2026.9.1) as the one
+                  plain line of go/source/antiloop.version. Do not bump or
+                  alter it in any other way.
+                * ACTION=BUMP_INDEPENDENTLY (image:tag is lower than
+                  antiloop.version): do NOT use image:tag. Increment the
+                  last numeric component of GO_VERSION by one
+                  (2026.8.9 -> 2026.8.10) and write that.
+                * In both cases add a matching "### <new version> — <date>"
+                  entry under "Go releases" in go/CHANGELOG.md.
+              If you made no Go source change (review-only PR), leave
+              antiloop.version untouched so no release is built.
+              Never touch go/deploy/shared/antiloop.version — that is the
+              fleet promotion pointer, a separate human step.
+              Highlight in the PR description, in a "Version warnings"
+              section at the top: (a) if PREV_LOWER_THAN_GO=yes, that the
+              previous image:tag was lower than antiloop.version, i.e.
+              the Go version had run ahead of the flow release; (b) if
+              ACTION=BUMP_INDEPENDENTLY, that image:tag is lower than
+              antiloop.version, so antiloop.version was bumped on its own
+              and is no longer aligned with image:tag. State the actual
+              values. If neither applies, say the versions are in sync.
             - Always open a pull request against main, even if your
               conclusion is "no Go changes needed this release" — in that
               case open a PR that only notes the review in go/CHANGELOG.md,
