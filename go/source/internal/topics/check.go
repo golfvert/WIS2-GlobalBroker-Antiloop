@@ -59,6 +59,32 @@ type Result struct {
 	DataTopic string
 }
 
+// DataTopicOf reports whether topic's segment[4] is "data" — the SAME,
+// SOLE condition the original flow's METADATA_CHECK_OPTION gate uses
+// ($split(topic,"/")[4] = "data", flows.json "Metadata check ?"
+// switch), independent of TOPIC_CHECK_OPTION and independent of which
+// branch Check() itself takes for this same topic. relay.Pipeline uses
+// this directly for the metadata-check gate instead of Check()'s own
+// Result.DataTopic, which is only ever populated by branch 6 below and
+// is gated behind TOPIC_CHECK_OPTION being enabled at all — using that
+// field for the metadata gate was a real, since-fixed bug (see
+// CLAUDE.md's divergence list): METADATA_CHECK_OPTION silently did
+// nothing whenever TOPIC_CHECK_OPTION was off, and topics Check()
+// exempts before reaching branch 6 (e.g. the "experimental" discipline
+// carve-out in branch 2) never got metadata-checked either, even
+// though the original flow's independent gate would still catch both.
+//
+// If ok, dataTopic is everything from segment 4 onward, e.g.
+// "data/core/weather/surface-based-observations/synop" — same shape as
+// Result.DataTopic.
+func DataTopicOf(topic string) (dataTopic string, ok bool) {
+	parts := strings.Split(topic, "/")
+	if len(parts) <= 4 || parts[4] != "data" {
+		return "", false
+	}
+	return strings.Join(parts[4:], "/"), true
+}
+
 // topicHashes may be nil (e.g. TOPIC_URL not configured for this
 // deployment) — treated as "don't gate on it", not "reject everything",
 // consistent with how allowlist.Set behaves when its source URL is empty.
