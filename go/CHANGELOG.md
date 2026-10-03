@@ -147,6 +147,16 @@ unverified — CI/reviewer should run it. Subscribers/consumers of
 topic for non-`wis2` origins; confirm that's intended for the fleet.
 `go/deploy/` needs no change (no new env var or config shape).
 
+**Re-review (2026-10-03):** the workflow re-ran for `wis2gb:2026.9.1`
+(diff `559811e`..`9ab59f5`). Verified every item above is already present
+in `go/source/` (`domainFromTopic` in `internal/monitor/monitor.go`, the
+`wis2gb:cache:schema:*` keys in `internal/wnm/wnm.go`); no further Go
+changes were made. **Version flag:** that monitor change landed in #5
+without bumping `go/source/antiloop.version`, which is still `2026.8.9`
+(image:tag is `2026.9.1`), so no Go release containing it has been built.
+This review-only PR deliberately leaves `antiloop.version` untouched; a
+human should decide whether to bump it to `2026.9.1` to cut that release.
+
 ### wis2gb:2026.8.1
 
 Reviewed diff since previous release `wis2gb:2026.7.17` (previous release
