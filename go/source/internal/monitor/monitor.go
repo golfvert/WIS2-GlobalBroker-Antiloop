@@ -196,8 +196,20 @@ func (r *Reporter) report(originalTopic string, originalPayload []byte, eventTyp
 	if err != nil {
 		return
 	}
-	topic := "monitor/a/wis2/" + r.CentreID
+	topic := "monitor/a/" + domainFromTopic(originalTopic) + "/" + r.CentreID
 	r.Publish(topic, r.QoS, false, body)
+}
+
+// domainFromTopic mirrors the flow's "Cloud" node rule
+// $split(mqtttopic,"/")[2] = "wis2" ? "wis2" : "wigos" — the third
+// topic level (JSONata arrays are 0-indexed) selects the monitor
+// topic's domain; anything else, including too few levels, is "wigos".
+func domainFromTopic(topic string) string {
+	parts := strings.Split(topic, "/")
+	if len(parts) > 2 && parts[2] == "wis2" {
+		return "wis2"
+	}
+	return "wigos"
 }
 
 // ClassifySchemaError best-effort-matches a schema validation failure

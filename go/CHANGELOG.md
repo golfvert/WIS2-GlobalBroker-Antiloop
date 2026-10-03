@@ -110,6 +110,43 @@ why the two implementations deliberately diverge.
 
 ## Flow-release reviews (`wis2gb:<image:tag>`)
 
+### wis2gb:2026.9.1
+
+Reviewed diff since previous release `wis2gb:2026.8.1` (previous release
+commit `559811e`, current release commit `3d5830d`).
+
+**One Go source change:**
+
+- **Monitor topic domain** (`flows.json`, "Cloud" node): the WME event
+  topic is now `monitor/a/<domain>/<centre_id>`, where domain is `wis2` if
+  the third level of the original topic is `wis2`, else `wigos`. Ported as
+  `domainFromTopic` in `go/source/internal/monitor/monitor.go` (with a unit
+  test). Previously always `monitor/a/wis2/<centre_id>`. Note: topics with
+  fewer than three levels map to `wigos`, same as the JSONata expression.
+
+**No Go change needed:**
+
+- **Schema cache keys** (`wnm_schema`/`wme_schema` with `EX 172800` →
+  `wis2gb:cache:schema:wnm`/`:wme` with no TTL): Go already uses exactly
+  these keys with no expiry (`internal/wnm/wnm.go`, `internal/fetchcache`).
+- **TTL inject topic** (`uuid_<uuid>` → `wis2gb:uuid_<uuid>`): this fixes the
+  read/write key mismatch in the flow. Go uses its own dedicated sentinel
+  key (`wis2gb:topic_ttl_<uuid>`) read and written under the same name, so
+  no behavior change; the explanatory comment in `internal/allowlist` about
+  the flow's mismatch is now historical.
+- **`wis2-notification-message.json`**: removed `maximum: 4096` on `size`.
+  The Go validator fetches its schema from `SCHEMA_WNM_URL` and has no
+  embedded copy, so nothing to change (the `maxLength: 4096` on another
+  field is untouched).
+- `settings.js`, `package.json`: unchanged.
+
+**Review flags:** `go test ./internal/monitor` could not be run in this
+automated session (command approval unavailable), so the new test is
+unverified — CI/reviewer should run it. Subscribers/consumers of
+`monitor/a/wis2/<centre_id>` will now see `wigos` events on a different
+topic for non-`wis2` origins; confirm that's intended for the fleet.
+`go/deploy/` needs no change (no new env var or config shape).
+
 ### wis2gb:2026.8.1
 
 Reviewed diff since previous release `wis2gb:2026.7.17` (previous release
