@@ -143,7 +143,7 @@ type Pipeline struct {
 	PubQoS byte
 
 	// Monitor reports topic/schema/metadata check failures as WME
-	// events on monitor/a/wis2/<centre_id> — see internal/monitor's
+	// events on monitor/a/<wis2|wigos>/<centre_id> — see internal/monitor's
 	// package doc comment for the full trace of what this replicates.
 	// nil means reporting is off entirely (no panics — Reporter.report
 	// nil-checks its receiver).
