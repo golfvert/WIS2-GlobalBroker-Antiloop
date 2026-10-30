@@ -23,6 +23,14 @@ why the two implementations deliberately diverge.
 
 ## Go releases (`antiloop-<version>`)
 
+### 2026.10.1 — 2026-10-30
+
+- WME validation-failure events now carry the original topic as
+  `data.content.channel` instead of `data.channel` (flow release
+  `wis2gb:2026.10.1`, "Exception" change node). `eventContent` in
+  `internal/monitor/monitor.go` gained `Channel`; `eventData` lost it.
+  New test `TestChannelInContent`.
+
 ### 2026.8.6 — 2026-08-22
 
 - Added a `POST /inject` HTTP endpoint (reachable as
@@ -109,6 +117,30 @@ why the two implementations deliberately diverge.
   each of these mechanisms.
 
 ## Flow-release reviews (`wis2gb:<image:tag>`)
+
+### wis2gb:2026.10.1
+
+Reviewed diff since `wis2gb:2026.9.1` (`60450ad`..`d93ab10`).
+
+**One Go source change:** WME event `channel` moved from `data.channel`
+to `data.content.channel` (`internal/monitor/monitor.go`, with test).
+
+**No Go change needed:**
+
+- **"id ?" switch `checkall` `"true"` → `"false"`** (Node-RED plumbing):
+  the rules are `hask id` / `else`; `else` only fires when no earlier
+  rule matched, so output routing is identical. Go's `ClassifySchemaError`
+  already does first-match-wins.
+- **`wis2-notification-message.json`**: newly added to the repo as a
+  reference copy of the WNM schema; no behavior change. Go fetches its
+  schema from `SCHEMA_WNM_URL` and has no embedded copy.
+- `settings.js`, `package.json`: unchanged. `go/deploy/` needs no change.
+
+**Review flags:** `go test`/`gofmt` could not be run in this session
+(command approval unavailable); struct alignment was hand-formatted and
+the new test is unverified — CI/reviewer should run `gofmt -l` and
+`go test ./internal/monitor`. Consumers of WME events reading
+`data.channel` must switch to `data.content.channel`.
 
 ### wis2gb:2026.9.1
 

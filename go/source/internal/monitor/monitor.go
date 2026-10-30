@@ -102,15 +102,15 @@ type cloudEvent struct {
 
 type eventData struct {
 	ConformsTo []string     `json:"conformsTo"`
-	Channel    string       `json:"channel"` // the original message's topic (mqtttopic in the flow)
 	Content    eventContent `json:"content"`
 	Severity   string       `json:"severity"` // always "ERROR" in the source flow
 }
 
 type eventContent struct {
-	WNM    interface{} `json:"wnm"` // the original message's payload (mqttpayload), parsed
-	Title  string      `json:"title"`
-	Errors interface{} `json:"errors,omitempty"`
+	Channel string      `json:"channel"` // the original message's topic (mqtttopic in the flow)
+	WNM     interface{} `json:"wnm"`     // the original message's payload (mqttpayload), parsed
+	Title   string      `json:"title"`
+	Errors  interface{} `json:"errors,omitempty"`
 }
 
 // Reporter builds and publishes WME validation-failure events for one
@@ -182,11 +182,11 @@ func (r *Reporter) report(originalTopic string, originalPayload []byte, eventTyp
 		DataSchema:      dataSchemaURL,
 		Data: eventData{
 			ConformsTo: []string{conformsToURL},
-			Channel:    originalTopic,
 			Content: eventContent{
-				WNM:    wnm,
-				Title:  title,
-				Errors: errors,
+				Channel: originalTopic,
+				WNM:     wnm,
+				Title:   title,
+				Errors:  errors,
 			},
 			Severity: "ERROR",
 		},
